@@ -1,21 +1,27 @@
 {
-  "files": [
-    "./ai.ts",
-    "./main.ts",
-    "./daily_rewards.ts",
-    "./messages.ts",
-    "./match_handler.ts",
-    "./match_rpc.ts"
-  ],
   "compilerOptions": {
-    "target": "es5",
-    "typeRoots": [
-      "./node_modules"
-    ],
-    "outFile": "./build/index.js",
-    "strict": true,
+    "noImplicitReturns": true,
+    "moduleResolution": "NodeNext",
     "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "noUnusedLocals": true,
+    "removeComments": true,
+    "target": "es2019",
+    "lib": ["es2019"],
+    "module": "NodeNext",
+    "strict": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
-  }
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "plugins": [
+      {
+        "transform": "ts-auto-mock/transformer",
+        "cacheBetweenTests": false
+      }
+    ]
+
+  },
+  "files": ["./node_modules/nakama-runtime/index.d.ts"],
+  "include": ["**/*.ts", "src/ai.ts"],
+  "exclude": ["node_modules", "build"]
 }

@@ -1,17 +1,24 @@
-FROM heroiclabs/nakama-pluginbuilder:3.26.0 AS builder
+FROM node:20.14-alpine AS node-builder
 
-ENV GO111MODULE on
-ENV CGO_ENABLED 1
-ENV GOPRIVATE "github.com/heroiclabs/nakama-project-template"
+RUN apk add --no-cache git
 
 WORKDIR /backend
-COPY . .
 
-RUN go build --trimpath --mod=vendor --buildmode=plugin -o ./backend.so
+ARG NPM_REGISTRY=https://registry.npmjs.org
 
-FROM heroiclabs/nakama:3.26.0
+COPY package*.json .
+ENV HUSKY=0
+RUN npm install --registry $NPM_REGISTRY
+COPY tsconfig.json .
+COPY rollup.config.js .
+COPY babel.config.json .
 
-COPY --from=builder /backend/backend.so /nakama/data/modules
-COPY --from=builder /backend/*.lua /nakama/data/modules/
-COPY --from=builder /backend/build/*.js /nakama/data/modules/build/
-COPY --from=builder /backend/local.yml /nakama/data/
+COPY ./src ./src
+
+RUN npm run build
+
+FROM heroiclabs/nakama:3.37.0
+
+COPY ./local.yml /nakama/data/
+
+COPY --from=node-builder /backend/build/*.js /nakama/data/modules/build/

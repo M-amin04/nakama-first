@@ -1,28 +1,67 @@
 {
-  "name": "nakama-project-template",
-  "version": "0.1.0",
-  "description": "An example project on how to set up and write custom logic in TypeScript for Nakama server.",
+  "name": "nakama-yatzy",
   "main": "build/index.js",
+  "author": "Ali Milani - Termentica.com",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "npm run type-check && docker compose up --build",
+    "lint": "eslint \"./src/\"",
+    "build": "rollup -c",
+    "type-check": "tsc --noEmit",
+    "prepare": "husky",
+    "test": "jest"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/heroiclabs/nakama-project-template.git"
-  },
-  "keywords": [
-    "nakama"
-  ],
-  "author": "Nakama Authors",
-  "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/heroiclabs/nakama-project-template/issues"
-  },
-  "homepage": "https://github.com/heroiclabs/nakama-project-template#readme",
   "dependencies": {
-    "nakama-runtime": "github:heroiclabs/nakama-common#master"
+    "inversify": "^6.2.1",
+    "lodash": "^4.17.21",
+    "nakama-runtime": "github:heroiclabs/nakama-common#master",
+    "reflect-metadata": "^0.2.2",
+    "utility-types": "^3.11.0",
+    "valibot": "^1.0.0"
   },
+  "type": "module",
   "devDependencies": {
-    "typescript": "^4.5.4"
+    "@babel/core": "^7.24.7",
+    "@babel/plugin-external-helpers": "^7.25.9",
+    "@babel/preset-env": "^7.26.0",
+    "@babel/preset-typescript": "^7.26.0",
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.0",
+    "@eslint/eslintrc": "^3.2.0",
+    "@eslint/js": "^9.17.0",
+    "@jest/globals": "^30.0.0-beta.3",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^28.0.2",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@rollup/plugin-typescript": "^12.1.2",
+    "@types/lodash": "^4.17.13",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-sonarjs": "^3.0.2",
+    "husky": "9.1.7",
+    "jest": "^29.7.0",
+    "jest-ts-auto-mock": "^2.1.0",
+    "prettier": "^3.4.2",
+    "rollup": "^4.28.1",
+    "ts-auto-mock": "^3.7.4",
+    "ts-jest": "^29.3.4",
+    "ts-patch": "^3.3.0",
+    "tslib": "^2.8.1",
+    "typescript": "^5.7.2"
+  },
+  "jest": {
+    "globals": {
+      "ts-jest": {
+        "compiler": "ts-patch/compiler"
+      }
+    },
+    "transform": {
+      ".(ts|tsx)": "ts-jest"
+    },
+    "setupFiles": [
+      "<rootDir>jest-config.ts"
+    ]
   }
 }
