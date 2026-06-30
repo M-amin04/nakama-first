@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { afterAuthenticateDevice, buyItemRpc, getInventoryRpc, setActiveItemRpc } from "./task.js";
+import { afterAuthenticateDevice, buyItemRpc, getInventoryRpc, getShopItemsRpc, setActiveItemRpc } from "./task.js";
 
 // import { rpcReward } from "./daily_rewards.js";
 // import { moduleName, matchInit, matchJoinAttempt, matchJoin, matchLeave, matchLoop, matchTerminate, matchSignal } from "./match_handler.js";
@@ -36,11 +36,13 @@ function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkrunt
     //     matchSignal,
     // });
     (globalThis as any).afterAuthenticateDevice = afterAuthenticateDevice;
+    (globalThis as any).getShopItemsRpc = getShopItemsRpc;
     (globalThis as any).getInventoryRpc = getInventoryRpc;
     (globalThis as any).setActiveItemRpc = setActiveItemRpc;
     (globalThis as any).buyItemRpc = buyItemRpc;
 
     initializer.registerAfterAuthenticateDevice(afterAuthenticateDevice);
+    initializer.registerRpc("get_shop_items", getShopItemsRpc);
     initializer.registerRpc("get_inventory", getInventoryRpc);
     initializer.registerRpc("set_active_item", setActiveItemRpc);
     initializer.registerRpc("buy_item", buyItemRpc);

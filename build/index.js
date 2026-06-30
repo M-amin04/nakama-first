@@ -26,6 +26,25 @@ const afterAuthenticateDevice = function (ctx, logger, nk, data, request) {
     logger.error(`Failed to initialize new user account: ${String(error)}`);
   }
 };
+const getShopItemsRpc = function (ctx, logger, nk, payload) {
+  const userId = "00000000-0000-0000-0000-000000000000";
+  try {
+    const objectids = [{
+      collection: "configs",
+      key: "shop",
+      userId: userId
+    }];
+    const record = nk.storageRead(objectids);
+    if (record.length === 0) return JSON.stringify({
+      items: []
+    });
+    const shopdata = record[0].value;
+    return JSON.stringify(shopdata);
+  } catch (e) {
+    logger.error(`Failed to fetch shop: ${String(e)}`);
+    throw new Error("Internal server error during fetching shop.");
+  }
+};
 const getInventoryRpc = function (ctx, logger, nk, payload) {
   const userId = ctx.userId;
   if (!userId) {
@@ -90,9 +109,11 @@ const setActiveItemRpc = function (ctx, logger, nk, payload) {
 };
 const buyItemRpc = function (ctx, logger, nk, payload) {
   const userId = ctx.userId;
-  if (!userId) throw new Error("User ID not found in context.");
+  if (!userId) {
+    throw new Error("User ID not found in context.");
+  }
   if (!payload) {
-    throw new Error("Payload is empty. Expecting item type and itemId.");
+    throw new Error("Payload is empty. Expecting itemId.");
   }
   let input;
   try {
@@ -103,43 +124,32 @@ const buyItemRpc = function (ctx, logger, nk, payload) {
   if (!input.itemId) {
     throw new Error("Missing itemId in payload.");
   }
-  const shopItems = {
-    "Avatar_1": {
-      price: 80,
-      itemType: 'avatar'
-    },
-    "Avatar_2": {
-      price: 40,
-      itemType: 'avatar'
-    },
-    "dice_1": {
-      price: 20,
-      itemType: 'dice'
-    },
-    "dice_2": {
-      price: 10,
-      itemType: 'dice'
-    }
-  };
-  const itemToBuy = shopItems[input.itemId];
-  if (!itemToBuy) throw new Error("Item not found in shop.");
+  const systemUserId = "00000000-0000-0000-0000-000000000000";
+  const shopObjectIds = [{
+    collection: "configs",
+    key: "shop",
+    userId: systemUserId
+  }];
+  const shopRecords = nk.storageRead(shopObjectIds);
+  if (shopRecords.length === 0) {
+    throw new Error("Shop configuration not found on server.");
+  }
+  const shopData = shopRecords[0].value;
+  if (!shopData || !shopData.items) {
+    throw new Error("Invalid shop data structure.");
+  }
+  const itemDetails = shopData.items[input.itemId];
+  if (!itemDetails) {
+    throw new Error("Item not found in shop.");
+  }
+  const itemPrice = itemDetails.price;
   try {
-    const changeset = {
-      coins: -itemToBuy.price
-    };
-    let updatedWallet;
-    try {
-      updatedWallet = nk.walletUpdate(userId, changeset, undefined, true);
-    } catch (walletError) {
-      logger.warn(`User ${userId} rejected due to insufficient funds.`);
-      throw new Error("Insufficient funds. You don't have enough coins.");
-    }
-    const objectsIds = [{
+    const inventoryObjectIds = [{
       collection: "inventory",
       key: "items",
       userId: userId
     }];
-    const records = nk.storageRead(objectsIds);
+    const records = nk.storageRead(inventoryObjectIds);
     let inventoryItems = [];
     let version = null;
     if (records.length > 0) {
@@ -150,15 +160,12 @@ const buyItemRpc = function (ctx, logger, nk, payload) {
       }
     }
     if (inventoryItems.includes(input.itemId)) {
-      nk.walletUpdate(userId, {
-        coins: itemToBuy.price
-      }, undefined, true);
       throw new Error("You already own this item.");
     }
     inventoryItems.push(input.itemId);
-    const writeOp = {
-      collection: 'inventory',
-      key: 'items',
+    const singlestorageWrite = {
+      collection: "inventory",
+      key: "items",
       userId: userId,
       value: {
         items: inventoryItems
@@ -166,15 +173,21 @@ const buyItemRpc = function (ctx, logger, nk, payload) {
       permissionRead: 1,
       permissionWrite: 0
     };
-    if (version) {
-      writeOp.version = version;
-    }
-    nk.storageWrite([writeOp]);
-    logger.info(`User ${userId} successfully bought ${input.itemId} for ${itemToBuy.price} coins.`);
+    if (version) singlestorageWrite.version = version;
+    const storageWrites = [singlestorageWrite];
+    const walletUpdates = [{
+      userId: userId,
+      changeset: {
+        coins: -itemPrice
+      }
+    }];
+    const accountUpdates = [];
+    const storageDeletes = [];
+    const result = nk.multiUpdate(accountUpdates, storageWrites, storageDeletes, walletUpdates, true);
+    logger.info(`Atomic buy success! Storage Acks: ${result.storageWriteAcks.length}, Wallet Acks: ${result.walletUpdateAcks.length}`);
     return JSON.stringify({
       success: true,
       boughtItem: input.itemId,
-      remainingCoins: updatedWallet.updated.coins,
       inventory: inventoryItems
     });
   } catch (error) {
@@ -185,10 +198,12 @@ const buyItemRpc = function (ctx, logger, nk, payload) {
 
 function InitModule(ctx, logger, nk, initializer) {
   globalThis.afterAuthenticateDevice = afterAuthenticateDevice;
+  globalThis.getShopItemsRpc = getShopItemsRpc;
   globalThis.getInventoryRpc = getInventoryRpc;
   globalThis.setActiveItemRpc = setActiveItemRpc;
   globalThis.buyItemRpc = buyItemRpc;
   initializer.registerAfterAuthenticateDevice(afterAuthenticateDevice);
+  initializer.registerRpc("get_shop_items", getShopItemsRpc);
   initializer.registerRpc("get_inventory", getInventoryRpc);
   initializer.registerRpc("set_active_item", setActiveItemRpc);
   initializer.registerRpc("buy_item", buyItemRpc);

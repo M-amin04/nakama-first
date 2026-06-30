@@ -41,6 +41,39 @@ export const afterAuthenticateDevice: nkruntime.AfterHookFunction<nkruntime.Sess
 
 
 
+export const getShopItemsRpc: nkruntime.RpcFunction = function(
+    ctx: nkruntime.Context,
+    logger: nkruntime.Logger,
+    nk: nkruntime.Nakama,
+    payload: string
+): string {
+    const userId = "00000000-0000-0000-0000-000000000000";
+
+    try {
+        const objectids: nkruntime.StorageReadRequest[] = [
+        {
+            collection: "configs",
+            key: "shop",
+            userId: userId
+        }
+    ];
+
+    const record = nk.storageRead(objectids);
+    if(record.length === 0)
+        return JSON.stringify({ items: [] });
+
+    const shopdata = record[0].value;
+    return JSON.stringify(shopdata)
+
+    } catch (e) {
+        logger.error(`Failed to fetch shop: ${String(e)}`);
+        throw new Error("Internal server error during fetching shop.")
+    }
+}
+
+
+
+
 export const getInventoryRpc: nkruntime.RpcFunction = function(
     ctx: nkruntime.Context,
     logger: nkruntime.Logger,
@@ -76,6 +109,9 @@ export const getInventoryRpc: nkruntime.RpcFunction = function(
         throw new Error("Internal server error during fetching inventory.");
     }
 }
+
+
+
 
 
 
@@ -133,6 +169,9 @@ export const setActiveItemRpc: nkruntime.RpcFunction = function (
 
 
 
+
+
+
 export const buyItemRpc: nkruntime.RpcFunction = function(
     ctx: nkruntime.Context,
     logger: nkruntime.Logger,
@@ -140,16 +179,17 @@ export const buyItemRpc: nkruntime.RpcFunction = function(
     payload: string
 ): string {
     const userId = ctx.userId;
-    if (!userId)
-        throw new Error("User ID not found in context.")
+    if (!userId) {
+        throw new Error("User ID not found in context.");
+    }
 
     if (!payload) {
-        throw new Error("Payload is empty. Expecting item type and itemId.");
+        throw new Error("Payload is empty. Expecting itemId.");
     }
 
     let input: { itemId: string };
     try {
-        input = JSON.parse(payload)
+        input = JSON.parse(payload);
     } catch (e) {
         throw new Error("Invalid JSON payload.");
     }
@@ -158,36 +198,34 @@ export const buyItemRpc: nkruntime.RpcFunction = function(
         throw new Error("Missing itemId in payload.");
     }
 
+    const systemUserId = "00000000-0000-0000-0000-000000000000";
+    const shopObjectIds: nkruntime.StorageReadRequest[] = [
+        { collection: "configs", key: "shop", userId: systemUserId }
+    ];
 
-    const shopItems: Record<string, { price: number, itemType: string }> = {
-        "Avatar_1": { price: 80, itemType: 'avatar' },
-        "Avatar_2": { price: 40, itemType: 'avatar' },
-        "dice_1": { price: 20, itemType: 'dice' },
-        "dice_2": { price: 10, itemType: 'dice' },
-    };
+    const shopRecords = nk.storageRead(shopObjectIds);
+    if (shopRecords.length === 0) {
+        throw new Error("Shop configuration not found on server.");
+    }
 
-    const itemToBuy = shopItems[input.itemId];
-    if (!itemToBuy)
-        throw new Error("Item not found in shop.")
+    const shopData = shopRecords[0].value;
+    if (!shopData || !shopData.items) {
+        throw new Error("Invalid shop data structure.");
+    }
+
+    const itemDetails = shopData.items[input.itemId];
+    if (!itemDetails) {
+        throw new Error("Item not found in shop.");
+    }
+
+    const itemPrice = itemDetails.price;
 
     try {
-        const changeset = {
-            coins: -itemToBuy.price
-        }
-
-        let updatedWallet: nkruntime.WalletUpdateResult;
-        try {
-            updatedWallet = nk.walletUpdate(userId, changeset, undefined, true)
-        } catch (walletError) {
-            logger.warn(`User ${userId} rejected due to insufficient funds.`);
-            throw new Error("Insufficient funds. You don't have enough coins.");
-        }
-
-        const objectsIds: nkruntime.StorageReadRequest[] = [
+        const inventoryObjectIds: nkruntime.StorageReadRequest[] = [
             { collection: "inventory", key: "items", userId: userId }
         ];
 
-        const records = nk.storageRead(objectsIds);
+        const records = nk.storageRead(inventoryObjectIds);
 
         let inventoryItems: string[] = [];
         let version: string | null = null;
@@ -201,33 +239,42 @@ export const buyItemRpc: nkruntime.RpcFunction = function(
         }
 
         if (inventoryItems.includes(input.itemId)) {
-            nk.walletUpdate(userId, { coins: itemToBuy.price }, undefined, true);
             throw new Error("You already own this item.");
         }
 
-        inventoryItems.push(input.itemId)
+        inventoryItems.push(input.itemId);
 
-        const writeOp: nkruntime.StorageWriteRequest = {
-            collection: 'inventory',
-            key: 'items',
-            userId: userId,
-            value: { items: inventoryItems },
-            permissionRead: 1,
-            permissionWrite: 0
+        const singlestorageWrite: nkruntime.StorageWriteRequest = {
+                collection: "inventory",
+                key: "items",
+                userId: userId,
+                value: { items: inventoryItems },
+                permissionRead: 1,
+                permissionWrite: 0,
         };
 
-        if (version) {
-            writeOp.version = version;
-        }
+        if (version)
+            singlestorageWrite.version = version;
 
-        nk.storageWrite([writeOp])
+        const storageWrites: nkruntime.StorageWriteRequest[] = [singlestorageWrite]
 
-        logger.info(`User ${userId} successfully bought ${input.itemId} for ${itemToBuy.price} coins.`);
+        const walletUpdates: nkruntime.WalletUpdate[] = [
+            {
+                userId: userId,
+                changeset: { coins: -itemPrice }
+            }
+        ];
+
+        const accountUpdates: nkruntime.UserUpdateAccount[] = [];
+        const storageDeletes: nkruntime.StorageDeleteRequest[] = [];
+
+        const result = nk.multiUpdate(accountUpdates, storageWrites, storageDeletes, walletUpdates, true);
+
+        logger.info(`Atomic buy success! Storage Acks: ${result.storageWriteAcks.length}, Wallet Acks: ${result.walletUpdateAcks.length}`);
 
         return JSON.stringify({
             success: true,
             boughtItem: input.itemId,
-            remainingCoins: updatedWallet.updated.coins,
             inventory: inventoryItems
         });
 
@@ -235,4 +282,4 @@ export const buyItemRpc: nkruntime.RpcFunction = function(
         logger.error(`Shop purchase failed: ${error.message || String(error)}`);
         throw error;
     }
-}
+};
