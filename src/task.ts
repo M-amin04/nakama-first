@@ -13,13 +13,13 @@ export const afterAuthenticateDevice: nkruntime.AfterHookFunction<nkruntime.Sess
     const userId = ctx.userId;
 
     if (!userId) {
-    logger.error("User ID is undefined in context.");
+    logger.error(`User ID is undefined in context.`);
     return;
 }
 
     const randomNumericUsername = Math.floor(10000000000 + Math.random() * 90000000000).toString();
 
-    const randomNuericDisplayname = "Guest_" + randomNumericUsername;
+    const randomNuericDisplayname = 'Guest_' + randomNumericUsername;
 
     const initialWallet = {
         coins: 1000,
@@ -28,11 +28,9 @@ export const afterAuthenticateDevice: nkruntime.AfterHookFunction<nkruntime.Sess
 
     try {
         nk.accountUpdateId(userId, randomNumericUsername, randomNuericDisplayname, null, null, null, null);
-        logger.info(`Username updated for new user ${userId} to ${randomNumericUsername}`);
 
-        const metadata = { comment: "Initial sign-up rewards" };
+        const metadata = { comment: 'Initial sign-up rewards' };
         nk.walletUpdate(userId, initialWallet, metadata, true);
-        logger.info(`Initial wallet (coins/gems) credited for user ${userId}`);
 
     } catch (error) {
         logger.error(`Failed to initialize new user account: ${String(error)}`);
@@ -47,13 +45,13 @@ export const getShopItemsRpc: nkruntime.RpcFunction = function(
     nk: nkruntime.Nakama,
     payload: string
 ): string {
-    const userId = "00000000-0000-0000-0000-000000000000";
+    const userId = '00000000-0000-0000-0000-000000000000';
 
     try {
         const objectids: nkruntime.StorageReadRequest[] = [
         {
-            collection: "configs",
-            key: "shop",
+            collection: 'configs',
+            key: 'shop',
             userId: userId
         }
     ];
@@ -67,7 +65,7 @@ export const getShopItemsRpc: nkruntime.RpcFunction = function(
 
     } catch (e) {
         logger.error(`Failed to fetch shop: ${String(e)}`);
-        throw new Error("Internal server error during fetching shop.")
+        throw new Error('Internal server error during fetching shop.')
     }
 }
 
@@ -82,14 +80,14 @@ export const getInventoryRpc: nkruntime.RpcFunction = function(
 ): string {
     const userId = ctx.userId;
     if (!userId) {
-        throw new Error("User ID not found in context.");
+        throw new Error('User ID not found in context.');
     }
 
     try {
         const objectIds: nkruntime.StorageReadRequest[] = [
             {
-                collection: "inventory",
-                key: "items",
+                collection: 'inventory',
+                key: 'items',
                 userId: userId
             }
         ];
@@ -101,12 +99,11 @@ export const getInventoryRpc: nkruntime.RpcFunction = function(
         }
 
         const inventoryData = records[0].value;
-
         return JSON.stringify(inventoryData);
 
     } catch (error) {
         logger.error(`Failed to fetch inventory: ${String(error)}`);
-        throw new Error("Internal server error during fetching inventory.");
+        throw new Error(`Internal server error during fetching inventory.`);
     }
 }
 
@@ -123,11 +120,11 @@ export const setActiveItemRpc: nkruntime.RpcFunction = function (
 ): string {
     const userId = ctx.userId;
     if (!userId) {
-        throw new Error("User ID not found in context.");
+        throw new Error('User ID not found in context.');
     }
 
     if (!payload) {
-        throw new Error("Payload is empty. Expecting item type and itemId.");
+        throw new Error('Payload is empty.');
     }
 
     let input: { itemType: string, itemId: string };
@@ -135,35 +132,52 @@ export const setActiveItemRpc: nkruntime.RpcFunction = function (
     try {
         input = JSON.parse(payload)
     } catch (e) {
-        throw new Error("Invalid JSON payload.");
+        throw new Error('Invalid JSON payload.');
     }
 
     if (!input.itemType || !input.itemId) {
-        throw new Error("Missing itemType or itemId in payload.");
+        throw new Error('Missing itemType or itemId in payload.');
     }
 
     try {
+        const inventoryObjectIds: nkruntime.StorageReadRequest[] = [{
+            collection: "inventory",
+            key: "items",
+            userId: userId 
+        }];
+
+        const records = nk.storageRead(inventoryObjectIds);
+
+        let inventoryItems: string[] = [];
+        if (records.length > 0) {
+            const currentData = records[0].value;
+            if (currentData && Array.isArray(currentData.items)) {
+                inventoryItems = currentData.items;
+            }
+        }
+
+        if (!inventoryItems.includes(input.itemId)) {
+            throw new Error('You do not own this item. Purchase it first.');
+        }
+
         const account = nk.accountGetId(userId);
         let metadata: Record<string, any> = {};
 
-        if (account.user && account.user.metadata) {
-        metadata = account.user.metadata
-    }
+        if (account.user && account.user.metadata)
+            metadata = account.user.metadata
 
-        if (!metadata.activeItems) {
+        if (!metadata.activeItems)
             metadata.activeItems = {};
-        }
+        
         metadata.activeItems[input.itemType] = input.itemId;
 
 
         nk.accountUpdateId(userId, null, null, null, null, null, null, metadata);
-        
-        logger.info(`User ${userId} equipped ${input.itemId} as their active ${input.itemType}`);
-        
+                
         return JSON.stringify({ success: true, activeItems: metadata.activeItems });
     } catch (error) {
         logger.error(`Failed to set active item: ${String(error)}`);
-        throw new Error("Internal server error during item equipment.");
+        throw new Error(`Internal server error during item equipment.`);
     }
 };
 
@@ -180,50 +194,54 @@ export const buyItemRpc: nkruntime.RpcFunction = function(
 ): string {
     const userId = ctx.userId;
     if (!userId) {
-        throw new Error("User ID not found in context.");
+        throw new Error('User ID not found in context.');
     }
 
     if (!payload) {
-        throw new Error("Payload is empty. Expecting itemId.");
+        throw new Error('Payload is empty.');
     }
 
     let input: { itemId: string };
     try {
         input = JSON.parse(payload);
     } catch (e) {
-        throw new Error("Invalid JSON payload.");
+        throw new Error('Invalid JSON payload.');
     }
 
     if (!input.itemId) {
-        throw new Error("Missing itemId in payload.");
+        throw new Error('Missing itemId in payload.');
     }
 
-    const systemUserId = "00000000-0000-0000-0000-000000000000";
-    const shopObjectIds: nkruntime.StorageReadRequest[] = [
-        { collection: "configs", key: "shop", userId: systemUserId }
-    ];
+    const systemUserId = '00000000-0000-0000-0000-000000000000';
+    const shopObjectIds: nkruntime.StorageReadRequest[] = [{
+        collection: "configs",
+        key: "shop",
+        userId: systemUserId 
+    }];
 
     const shopRecords = nk.storageRead(shopObjectIds);
     if (shopRecords.length === 0) {
-        throw new Error("Shop configuration not found on server.");
+        throw new Error('Shop configuration not found on server.');
     }
 
     const shopData = shopRecords[0].value;
     if (!shopData || !shopData.items) {
-        throw new Error("Invalid shop data structure.");
+        throw new Error('Invalid shop data structure.');
     }
 
     const itemDetails = shopData.items[input.itemId];
     if (!itemDetails) {
-        throw new Error("Item not found in shop.");
+        throw new Error('Item not found in shop.');
     }
 
     const itemPrice = itemDetails.price;
 
     try {
-        const inventoryObjectIds: nkruntime.StorageReadRequest[] = [
-            { collection: "inventory", key: "items", userId: userId }
-        ];
+        const inventoryObjectIds: nkruntime.StorageReadRequest[] = [{
+            collection: 'inventory',
+            key: 'items',
+            userId: userId
+        }];
 
         const records = nk.storageRead(inventoryObjectIds);
 
@@ -239,14 +257,14 @@ export const buyItemRpc: nkruntime.RpcFunction = function(
         }
 
         if (inventoryItems.includes(input.itemId)) {
-            throw new Error("You already own this item.");
+            throw new Error('You already own this item.');
         }
 
         inventoryItems.push(input.itemId);
 
         const singlestorageWrite: nkruntime.StorageWriteRequest = {
-                collection: "inventory",
-                key: "items",
+                collection: 'inventory',
+                key: 'items',
                 userId: userId,
                 value: { items: inventoryItems },
                 permissionRead: 1,
