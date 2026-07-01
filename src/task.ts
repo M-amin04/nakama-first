@@ -44,7 +44,7 @@ export const getShopItemsRpc: nkruntime.RpcFunction = function(
     logger: nkruntime.Logger,
     nk: nkruntime.Nakama,
     payload: string
-): string {
+) {
     const userId = '00000000-0000-0000-0000-000000000000';
 
     try {
@@ -63,8 +63,8 @@ export const getShopItemsRpc: nkruntime.RpcFunction = function(
     const shopdata = record[0].value;
     return JSON.stringify(shopdata)
 
-    } catch (e) {
-        logger.error(`Failed to fetch shop: ${String(e)}`);
+    } catch (error) {
+        logger.error(`Failed to fetch shop: ${String(error)}`);
         throw new Error('Internal server error during fetching shop.')
     }
 }
@@ -77,7 +77,7 @@ export const getInventoryRpc: nkruntime.RpcFunction = function(
     logger: nkruntime.Logger,
     nk: nkruntime.Nakama,
     payload: string
-): string {
+) {
     const userId = ctx.userId;
     if (!userId) {
         throw new Error('User ID not found in context.');
@@ -117,7 +117,7 @@ export const setActiveItemRpc: nkruntime.RpcFunction = function (
     logger: nkruntime.Logger,
     nk: nkruntime.Nakama,
     payload: string
-): string {
+) {
     const userId = ctx.userId;
     if (!userId) {
         throw new Error('User ID not found in context.');
@@ -131,7 +131,7 @@ export const setActiveItemRpc: nkruntime.RpcFunction = function (
 
     try {
         input = JSON.parse(payload)
-    } catch (e) {
+    } catch (error) {
         throw new Error('Invalid JSON payload.');
     }
 
@@ -191,7 +191,7 @@ export const buyItemRpc: nkruntime.RpcFunction = function(
     logger: nkruntime.Logger,
     nk: nkruntime.Nakama,
     payload: string
-): string {
+) {
     const userId = ctx.userId;
     if (!userId) {
         throw new Error('User ID not found in context.');
@@ -204,7 +204,7 @@ export const buyItemRpc: nkruntime.RpcFunction = function(
     let input: { itemId: string };
     try {
         input = JSON.parse(payload);
-    } catch (e) {
+    } catch (error) {
         throw new Error('Invalid JSON payload.');
     }
 
@@ -288,7 +288,7 @@ export const buyItemRpc: nkruntime.RpcFunction = function(
 
         const result = nk.multiUpdate(accountUpdates, storageWrites, storageDeletes, walletUpdates, true);
 
-        logger.info(`Atomic buy success! Storage Acks: ${result.storageWriteAcks.length}, Wallet Acks: ${result.walletUpdateAcks.length}`);
+        logger.info(`buy is success! Storage Acks: ${result.storageWriteAcks.length}, Wallet Acks: ${result.walletUpdateAcks.length}`);
 
         return JSON.stringify({
             success: true,

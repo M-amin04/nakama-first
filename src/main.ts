@@ -36,10 +36,6 @@ function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkrunt
     //     matchSignal,
     // });
     (globalThis as any).afterAuthenticateDevice = afterAuthenticateDevice;
-    (globalThis as any).getShopItemsRpc = getShopItemsRpc;
-    (globalThis as any).getInventoryRpc = getInventoryRpc;
-    (globalThis as any).setActiveItemRpc = setActiveItemRpc;
-    (globalThis as any).buyItemRpc = buyItemRpc;
 
     initializer.registerAfterAuthenticateDevice(afterAuthenticateDevice);
     initializer.registerRpc("get_shop_items", getShopItemsRpc);

@@ -38,8 +38,8 @@ const getShopItemsRpc = function (ctx, logger, nk, payload) {
     });
     const shopdata = record[0].value;
     return JSON.stringify(shopdata);
-  } catch (e) {
-    logger.error(`Failed to fetch shop: ${String(e)}`);
+  } catch (error) {
+    logger.error(`Failed to fetch shop: ${String(error)}`);
     throw new Error('Internal server error during fetching shop.');
   }
 };
@@ -78,7 +78,7 @@ const setActiveItemRpc = function (ctx, logger, nk, payload) {
   let input;
   try {
     input = JSON.parse(payload);
-  } catch (e) {
+  } catch (error) {
     throw new Error('Invalid JSON payload.');
   }
   if (!input.itemType || !input.itemId) {
@@ -103,12 +103,8 @@ const setActiveItemRpc = function (ctx, logger, nk, payload) {
     }
     const account = nk.accountGetId(userId);
     let metadata = {};
-    if (account.user && account.user.metadata) {
-      metadata = account.user.metadata;
-    }
-    if (!metadata.activeItems) {
-      metadata.activeItems = {};
-    }
+    if (account.user && account.user.metadata) metadata = account.user.metadata;
+    if (!metadata.activeItems) metadata.activeItems = {};
     metadata.activeItems[input.itemType] = input.itemId;
     nk.accountUpdateId(userId, null, null, null, null, null, null, metadata);
     return JSON.stringify({
@@ -131,7 +127,7 @@ const buyItemRpc = function (ctx, logger, nk, payload) {
   let input;
   try {
     input = JSON.parse(payload);
-  } catch (e) {
+  } catch (error) {
     throw new Error('Invalid JSON payload.');
   }
   if (!input.itemId) {
@@ -197,7 +193,7 @@ const buyItemRpc = function (ctx, logger, nk, payload) {
     const accountUpdates = [];
     const storageDeletes = [];
     const result = nk.multiUpdate(accountUpdates, storageWrites, storageDeletes, walletUpdates, true);
-    logger.info(`Atomic buy success! Storage Acks: ${result.storageWriteAcks.length}, Wallet Acks: ${result.walletUpdateAcks.length}`);
+    logger.info(`buy is success! Storage Acks: ${result.storageWriteAcks.length}, Wallet Acks: ${result.walletUpdateAcks.length}`);
     return JSON.stringify({
       success: true,
       boughtItem: input.itemId,
@@ -211,10 +207,6 @@ const buyItemRpc = function (ctx, logger, nk, payload) {
 
 function InitModule(ctx, logger, nk, initializer) {
   globalThis.afterAuthenticateDevice = afterAuthenticateDevice;
-  globalThis.getShopItemsRpc = getShopItemsRpc;
-  globalThis.getInventoryRpc = getInventoryRpc;
-  globalThis.setActiveItemRpc = setActiveItemRpc;
-  globalThis.buyItemRpc = buyItemRpc;
   initializer.registerAfterAuthenticateDevice(afterAuthenticateDevice);
   initializer.registerRpc("get_shop_items", getShopItemsRpc);
   initializer.registerRpc("get_inventory", getInventoryRpc);
