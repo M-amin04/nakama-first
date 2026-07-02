@@ -14,9 +14,9 @@
 
 // import { aiPresence, aiTurn, aiUserId } from "./ai.js";
 // import { msecToSec } from "./daily_rewards.js";
-import { Board, BoardPosition, Mark } from "./messages.js";
+import { Board, BoardPosition, Mark } from './messages.js';
 
-export const moduleName = "tic-tac-toe_js";
+export const moduleName = 'tic-tac-toe_js';
 // const tickRate = 5;
 // const maxEmptySec = 30;
 // const delaybetweenGamesSec = 5;
@@ -35,39 +35,39 @@ export const moduleName = "tic-tac-toe_js";
 // ]
 
 interface MatchLabel {
-    open: number
-    fast: number
+  open: number;
+  fast: number;
 }
 
 export interface State {
-    // Match label
-    label: MatchLabel
-    // Ticks where no actions have occurred.
-    emptyTicks: number
-    // Currently connected users, or reserved spaces.
-    presences: {[userId: string]: nkruntime.Presence | null}
-    // Number of users currently in the process of connecting to the match.
-    joinsInProgress: number
-    // True if there's a game currently in progress.
-    playing: boolean
-    // Current state of the board.
-    board: Board
-    // Mark assignments to player user IDs.
-    marks: {[userId: string]: Mark | null}
-    // Whose turn it currently is.
-    mark: Mark
-    // Ticks until they must submit their move.
-    deadlineRemainingTicks: number
-    // The winner of the current game.
-    winner: Mark | null
-    // The winner positions.
-    winnerPositions: BoardPosition[] | null
-    // Ticks until the next game starts, if applicable.
-    nextGameRemainingTicks: number
-    // AI playing mode
-    ai: boolean
-    // A move message from AI player
-    aiMessage: nkruntime.MatchMessage | null
+  // Match label
+  label: MatchLabel;
+  // Ticks where no actions have occurred.
+  emptyTicks: number;
+  // Currently connected users, or reserved spaces.
+  presences: { [userId: string]: nkruntime.Presence | null };
+  // Number of users currently in the process of connecting to the match.
+  joinsInProgress: number;
+  // True if there's a game currently in progress.
+  playing: boolean;
+  // Current state of the board.
+  board: Board;
+  // Mark assignments to player user IDs.
+  marks: { [userId: string]: Mark | null };
+  // Whose turn it currently is.
+  mark: Mark;
+  // Ticks until they must submit their move.
+  deadlineRemainingTicks: number;
+  // The winner of the current game.
+  winner: Mark | null;
+  // The winner positions.
+  winnerPositions: BoardPosition[] | null;
+  // Ticks until the next game starts, if applicable.
+  nextGameRemainingTicks: number;
+  // AI playing mode
+  ai: boolean;
+  // A move message from AI player
+  aiMessage: nkruntime.MatchMessage | null;
 }
 
 // export let matchInit: nkruntime.MatchInitFunction<State> = function (ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, params: {[key: string]: string}) {

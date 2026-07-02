@@ -12,7 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { afterAuthenticateDevice, buyItemRpc, getInventoryRpc, getShopItemsRpc, setActiveItemRpc } from "./task.js";
+import {
+  afterAuthenticateDevice,
+  buyItemRpc,
+  getInventoryRpc,
+  getShopItemsRpc,
+  setActiveItemRpc,
+} from './task.js';
+import { requestOtp, verifyOtp, loginWithPassword } from './auth.js';
+import { setGameConfig, getGameConfig } from './games.js';
+import { initLeaderboard, onLeaderboardReset } from './leaderboard.js';
 
 // import { rpcReward } from "./daily_rewards.js";
 // import { moduleName, matchInit, matchJoinAttempt, matchJoin, matchLeave, matchLoop, matchTerminate, matchSignal } from "./match_handler.js";
@@ -21,32 +30,46 @@ import { afterAuthenticateDevice, buyItemRpc, getInventoryRpc, getShopItemsRpc, 
 // const rpcIdRewards = 'rewards_js';
 // const rpcIdFindMatch = 'find_match_js';
 
-function InitModule(ctx: nkruntime.Context, logger: nkruntime.Logger, nk: nkruntime.Nakama, initializer: nkruntime.Initializer) {
-    // initializer.registerRpc(rpcIdRewards, rpcReward);
+function InitModule(
+  ctx: nkruntime.Context,
+  logger: nkruntime.Logger,
+  nk: nkruntime.Nakama,
+  initializer: nkruntime.Initializer,
+) {
+  // initializer.registerRpc(rpcIdRewards, rpcReward);
 
-    // initializer.registerRpc(rpcIdFindMatch, rpcFindMatch);
+  // initializer.registerRpc(rpcIdFindMatch, rpcFindMatch);
 
-    // initializer.registerMatch(moduleName, {
-    //     matchInit,
-    //     matchJoinAttempt,
-    //     matchJoin,
-    //     matchLeave,
-    //     matchLoop,
-    //     matchTerminate,
-    //     matchSignal,
-    // });
-    (globalThis as any).afterAuthenticateDevice = afterAuthenticateDevice;
+  // initializer.registerMatch(moduleName, {
+  //     matchInit,
+  //     matchJoinAttempt,
+  //     matchJoin,
+  //     matchLeave,
+  //     matchLoop,
+  //     matchTerminate,
+  //     matchSignal,
+  // });
+  (globalThis as any).afterAuthenticateDevice = afterAuthenticateDevice;
+  (globalThis as any).onLeaderboardReset = onLeaderboardReset;
+  initLeaderboard(ctx, logger, nk);
 
-    initializer.registerAfterAuthenticateDevice(afterAuthenticateDevice);
-    initializer.registerRpc("get_shop_items", getShopItemsRpc);
-    initializer.registerRpc("get_inventory", getInventoryRpc);
-    initializer.registerRpc("set_active_item", setActiveItemRpc);
-    initializer.registerRpc("buy_item", buyItemRpc);
-    
+  initializer.registerAfterAuthenticateDevice(afterAuthenticateDevice);
 
-    logger.info('JavaScript logic loaded.');
+  initializer.registerLeaderboardReset(onLeaderboardReset);
+
+  initializer.registerRpc('request_otp', requestOtp);
+  initializer.registerRpc('verify_otp', verifyOtp);
+  initializer.registerRpc('loginWithPassword', loginWithPassword);
+
+  initializer.registerRpc('setGameConfig', setGameConfig);
+  initializer.registerRpc('getGameConfig', getGameConfig);
+
+  initializer.registerRpc('get_shop_items', getShopItemsRpc);
+  initializer.registerRpc('get_inventory', getInventoryRpc);
+  initializer.registerRpc('set_active_item', setActiveItemRpc);
+  initializer.registerRpc('buy_item', buyItemRpc);
+
+  logger.info('JavaScript logic loaded.');
 }
-
-
 
 !InitModule && InitModule.bind(null);
