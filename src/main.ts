@@ -22,6 +22,7 @@ import {
 import { requestOtp, verifyOtp, loginWithPassword } from './auth.js';
 import { setGameConfig, getGameConfig } from './games.js';
 import { initLeaderboard, onLeaderboardReset } from './leaderboard.js';
+import { matchresult } from './match_result.js';
 
 // import { rpcReward } from "./daily_rewards.js";
 // import { moduleName, matchInit, matchJoinAttempt, matchJoin, matchLeave, matchLoop, matchTerminate, matchSignal } from "./match_handler.js";
@@ -36,19 +37,6 @@ function InitModule(
   nk: nkruntime.Nakama,
   initializer: nkruntime.Initializer,
 ) {
-  // initializer.registerRpc(rpcIdRewards, rpcReward);
-
-  // initializer.registerRpc(rpcIdFindMatch, rpcFindMatch);
-
-  // initializer.registerMatch(moduleName, {
-  //     matchInit,
-  //     matchJoinAttempt,
-  //     matchJoin,
-  //     matchLeave,
-  //     matchLoop,
-  //     matchTerminate,
-  //     matchSignal,
-  // });
   (globalThis as any).afterAuthenticateDevice = afterAuthenticateDevice;
   (globalThis as any).onLeaderboardReset = onLeaderboardReset;
   initLeaderboard(ctx, logger, nk);
@@ -63,6 +51,7 @@ function InitModule(
 
   initializer.registerRpc('setGameConfig', setGameConfig);
   initializer.registerRpc('getGameConfig', getGameConfig);
+  initializer.registerRpc('matchresult', matchresult);
 
   initializer.registerRpc('get_shop_items', getShopItemsRpc);
   initializer.registerRpc('get_inventory', getInventoryRpc);

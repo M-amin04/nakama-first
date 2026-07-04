@@ -95,8 +95,8 @@ const setActiveItemRpc = function (ctx, logger, nk, payload) {
   }
   try {
     const inventoryObjectIds = [{
-      collection: "inventory",
-      key: "items",
+      collection: 'inventory',
+      key: 'items',
       userId: userId
     }];
     const records = nk.storageRead(inventoryObjectIds);
@@ -135,8 +135,8 @@ const buyItemRpc = function (ctx, logger, nk, payload) {
   }
   const systemUserId = '00000000-0000-0000-0000-000000000000';
   const shopObjectIds = [{
-    collection: "configs",
-    key: "shop",
+    collection: 'configs',
+    key: 'shop',
     userId: systemUserId
   }];
   const shopRecords = nk.storageRead(shopObjectIds);
@@ -205,60 +205,108 @@ const buyItemRpc = function (ctx, logger, nk, payload) {
   }
 };
 
-// src/storages/globalConfig/globalConfig.ts
-var store;
-// @__NO_SIDE_EFFECTS__
-function getGlobalConfig(config2) {
-  return {
-    lang: config2?.lang ?? store?.lang,
-    message: config2?.message,
-    abortEarly: config2?.abortEarly ?? store?.abortEarly,
-    abortPipeEarly: config2?.abortPipeEarly ?? store?.abortPipeEarly
-  };
+//#region src/storages/globalConfig/globalConfig.ts
+const DEFAULT_CONFIG = {
+  lang: void 0,
+  message: void 0,
+  abortEarly: void 0,
+  abortPipeEarly: void 0
+};
+/**
+* Returns the global configuration.
+*
+* @param config The config to merge.
+*
+* @returns The configuration.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getGlobalConfig(config$1) {
+  return DEFAULT_CONFIG;
 }
 
-// src/storages/globalMessage/globalMessage.ts
-var store2;
-// @__NO_SIDE_EFFECTS__
+//#endregion
+//#region src/storages/globalMessage/globalMessage.ts
+let store$3;
+/**
+* Returns a global error message.
+*
+* @param lang The language of the message.
+*
+* @returns The error message.
+*/
+/* @__NO_SIDE_EFFECTS__ */
 function getGlobalMessage(lang) {
-  return store2?.get(lang);
+  return store$3?.get(lang);
 }
 
-// src/storages/schemaMessage/schemaMessage.ts
-var store3;
-// @__NO_SIDE_EFFECTS__
+//#endregion
+//#region src/storages/schemaMessage/schemaMessage.ts
+let store$2;
+/**
+* Returns a schema error message.
+*
+* @param lang The language of the message.
+*
+* @returns The error message.
+*/
+/* @__NO_SIDE_EFFECTS__ */
 function getSchemaMessage(lang) {
-  return store3?.get(lang);
+  return store$2?.get(lang);
 }
 
-// src/storages/specificMessage/specificMessage.ts
-var store4;
-// @__NO_SIDE_EFFECTS__
+//#endregion
+//#region src/storages/specificMessage/specificMessage.ts
+let store$1;
+/**
+* Returns a specific error message.
+*
+* @param reference The identifier reference.
+* @param lang The language of the message.
+*
+* @returns The error message.
+*/
+/* @__NO_SIDE_EFFECTS__ */
 function getSpecificMessage(reference, lang) {
-  return store4?.get(reference)?.get(lang);
+  return store$1?.get(reference)?.get(lang);
 }
 
-// src/utils/_stringify/_stringify.ts
-// @__NO_SIDE_EFFECTS__
+//#endregion
+//#region src/utils/_stringify/_stringify.ts
+/**
+* Stringifies an unknown input to a literal or type string.
+*
+* @param input The unknown input.
+*
+* @returns A literal or type string.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
 function _stringify(input) {
   const type = typeof input;
-  if (type === "string") {
-    return `"${input}"`;
-  }
-  if (type === "number" || type === "bigint" || type === "boolean") {
-    return `${input}`;
-  }
-  if (type === "object" || type === "function") {
-    return (input && Object.getPrototypeOf(input)?.constructor?.name) ?? "null";
-  }
+  if (type === "string") return `"${input}"`;
+  if (type === "number" || type === "bigint" || type === "boolean") return `${input}`;
+  if (type === "object" || type === "function") return (input && Object.getPrototypeOf(input)?.constructor?.name) ?? "null";
   return type;
 }
 
-// src/utils/_addIssue/_addIssue.ts
-function _addIssue(context, label, dataset, config2, other) {
+//#endregion
+//#region src/utils/_addIssue/_addIssue.ts
+/**
+* Adds an issue to the dataset.
+*
+* @param context The issue context.
+* @param label The issue label.
+* @param dataset The input dataset.
+* @param config The configuration.
+* @param other The optional props.
+*
+* @internal
+*/
+function _addIssue(context, label, dataset, config$1, other) {
   const input = other && "input" in other ? other.input : dataset.value;
   const expected = other?.expected ?? context.expects ?? null;
-  const received = other?.received ?? _stringify(input);
+  const received = other?.received ?? /* @__PURE__ */_stringify(input);
   const issue = {
     kind: context.kind,
     type: context.type,
@@ -269,48 +317,56 @@ function _addIssue(context, label, dataset, config2, other) {
     requirement: context.requirement,
     path: other?.path,
     issues: other?.issues,
-    lang: config2.lang,
-    abortEarly: config2.abortEarly,
-    abortPipeEarly: config2.abortPipeEarly
+    lang: config$1.lang,
+    abortEarly: config$1.abortEarly,
+    abortPipeEarly: config$1.abortPipeEarly
   };
   const isSchema = context.kind === "schema";
-  const message = other?.message ?? context.message ?? getSpecificMessage(context.reference, issue.lang) ?? (isSchema ? getSchemaMessage(issue.lang) : null) ?? config2.message ?? getGlobalMessage(issue.lang);
-  if (message !== void 0) {
-    issue.message = typeof message === "function" ?
-    // @ts-expect-error
-    message(issue) : message;
-  }
-  if (isSchema) {
-    dataset.typed = false;
-  }
-  if (dataset.issues) {
-    dataset.issues.push(issue);
-  } else {
-    dataset.issues = [issue];
-  }
+  const message$1 = other?.message ?? context.message ?? /* @__PURE__ */getSpecificMessage(context.reference, issue.lang) ?? (isSchema ? /* @__PURE__ */getSchemaMessage(issue.lang) : null) ?? config$1.message ?? /* @__PURE__ */getGlobalMessage(issue.lang);
+  if (message$1 !== void 0) issue.message = typeof message$1 === "function" ? message$1(issue) : message$1;
+  if (isSchema) dataset.typed = false;
+  if (dataset.issues) dataset.issues.push(issue);else dataset.issues = [issue];
 }
 
-// src/utils/_getStandardProps/_getStandardProps.ts
-// @__NO_SIDE_EFFECTS__
+//#endregion
+//#region src/utils/_getStandardProps/_getStandardProps.ts
+const _standardCache = /* @__PURE__ */new WeakMap();
+/**
+* Returns the Standard Schema properties.
+*
+* @param context The schema context.
+*
+* @returns The Standard Schema properties.
+*/
+/* @__NO_SIDE_EFFECTS__ */
 function _getStandardProps(context) {
-  return {
-    version: 1,
-    vendor: "valibot",
-    validate(value2) {
-      return context["~run"]({
-        value: value2
-      }, getGlobalConfig());
-    }
-  };
+  let cached = _standardCache.get(context);
+  if (!cached) {
+    cached = {
+      version: 1,
+      vendor: "valibot",
+      validate(value$1) {
+        return context["~run"]({
+          value: value$1
+        }, /* @__PURE__ */getGlobalConfig());
+      }
+    };
+    _standardCache.set(context, cached);
+  }
+  return cached;
 }
 
-// src/utils/ValiError/ValiError.ts
+//#endregion
+//#region src/utils/ValiError/ValiError.ts
+/**
+* A Valibot error with useful information.
+*/
 var ValiError = class extends Error {
   /**
-   * Creates a Valibot error with useful information.
-   *
-   * @param issues The error issues.
-   */
+  * Creates a Valibot error with useful information.
+  *
+  * @param issues The error issues.
+  */
   constructor(issues) {
     super(issues[0].message);
     this.name = "ValiError";
@@ -318,112 +374,160 @@ var ValiError = class extends Error {
   }
 };
 
-// src/methods/getFallback/getFallback.ts
-// @__NO_SIDE_EFFECTS__
-function getFallback(schema, dataset, config2) {
-  return typeof schema.fallback === "function" ?
-  // @ts-expect-error
-  schema.fallback(dataset, config2) :
-  // @ts-expect-error
-  schema.fallback;
+//#endregion
+//#region src/methods/getFallback/getFallback.ts
+/**
+* Returns the fallback value of the schema.
+*
+* @param schema The schema to get it from.
+* @param dataset The output dataset if available.
+* @param config The config if available.
+*
+* @returns The fallback value.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getFallback(schema, dataset, config$1) {
+  return typeof schema.fallback === "function" ? schema.fallback(dataset, config$1) : schema.fallback;
 }
 
-// src/methods/getDefault/getDefault.ts
-// @__NO_SIDE_EFFECTS__
-function getDefault(schema, dataset, config2) {
-  return typeof schema.default === "function" ?
-  // @ts-expect-error
-  schema.default(dataset, config2) :
-  // @ts-expect-error
-  schema.default;
+//#endregion
+//#region src/methods/getDefault/getDefault.ts
+/**
+* Returns the default value of the schema.
+*
+* @param schema The schema to get it from.
+* @param dataset The input dataset if available.
+* @param config The config if available.
+*
+* @returns The default value.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getDefault(schema, dataset, config$1) {
+  return typeof schema.default === "function" ? schema.default(dataset, config$1) : schema.default;
 }
 
-// src/schemas/number/number.ts
-// @__NO_SIDE_EFFECTS__
-function number(message) {
+//#endregion
+//#region src/schemas/array/array.ts
+/* @__NO_SIDE_EFFECTS__ */
+function array(item, message$1) {
+  return {
+    kind: "schema",
+    type: "array",
+    reference: array,
+    expects: "Array",
+    async: false,
+    item,
+    message: message$1,
+    get "~standard"() {
+      return /* @__PURE__ */_getStandardProps(this);
+    },
+    "~run"(dataset, config$1) {
+      const input = dataset.value;
+      if (Array.isArray(input)) {
+        dataset.typed = true;
+        dataset.value = [];
+        for (let key = 0; key < input.length; key++) {
+          const value$1 = input[key];
+          const itemDataset = this.item["~run"]({
+            value: value$1
+          }, config$1);
+          if (itemDataset.issues) {
+            const pathItem = {
+              type: "array",
+              origin: "value",
+              input,
+              key,
+              value: value$1
+            };
+            for (const issue of itemDataset.issues) {
+              if (issue.path) issue.path.unshift(pathItem);else issue.path = [pathItem];
+              dataset.issues?.push(issue);
+            }
+            if (!dataset.issues) dataset.issues = itemDataset.issues;
+            if (config$1.abortEarly) {
+              dataset.typed = false;
+              break;
+            }
+          }
+          if (!itemDataset.typed) dataset.typed = false;
+          dataset.value.push(itemDataset.value);
+        }
+      } else _addIssue(this, "type", dataset, config$1);
+      return dataset;
+    }
+  };
+}
+
+//#endregion
+//#region src/schemas/number/number.ts
+/* @__NO_SIDE_EFFECTS__ */
+function number(message$1) {
   return {
     kind: "schema",
     type: "number",
     reference: number,
     expects: "number",
     async: false,
-    message,
+    message: message$1,
     get "~standard"() {
-      return _getStandardProps(this);
+      return /* @__PURE__ */_getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (typeof dataset.value === "number" && !isNaN(dataset.value)) {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (typeof dataset.value === "number" && !isNaN(dataset.value)) dataset.typed = true;else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 
-// src/schemas/object/object.ts
-// @__NO_SIDE_EFFECTS__
-function object(entries, message) {
+//#endregion
+//#region src/schemas/object/object.ts
+/* @__NO_SIDE_EFFECTS__ */
+function object(entries$1, message$1) {
   return {
     kind: "schema",
     type: "object",
     reference: object,
     expects: "Object",
     async: false,
-    entries,
-    message,
+    entries: entries$1,
+    message: message$1,
     get "~standard"() {
-      return _getStandardProps(this);
+      return /* @__PURE__ */_getStandardProps(this);
     },
-    "~run"(dataset, config2) {
+    "~run"(dataset, config$1) {
       const input = dataset.value;
       if (input && typeof input === "object") {
         dataset.typed = true;
         dataset.value = {};
         for (const key in this.entries) {
           const valueSchema = this.entries[key];
-          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") &&
-          // @ts-expect-error
-          valueSchema.default !== void 0) {
-            const value2 = key in input ?
-            // @ts-expect-error
-            input[key] : getDefault(valueSchema);
+          if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+            const value$1 = key in input ? input[key] : /* @__PURE__ */getDefault(valueSchema);
             const valueDataset = valueSchema["~run"]({
-              value: value2
-            }, config2);
+              value: value$1
+            }, config$1);
             if (valueDataset.issues) {
               const pathItem = {
                 type: "object",
                 origin: "value",
                 input,
                 key,
-                value: value2
+                value: value$1
               };
               for (const issue of valueDataset.issues) {
-                if (issue.path) {
-                  issue.path.unshift(pathItem);
-                } else {
-                  issue.path = [pathItem];
-                }
+                if (issue.path) issue.path.unshift(pathItem);else issue.path = [pathItem];
                 dataset.issues?.push(issue);
               }
-              if (!dataset.issues) {
-                dataset.issues = valueDataset.issues;
-              }
-              if (config2.abortEarly) {
+              if (!dataset.issues) dataset.issues = valueDataset.issues;
+              if (config$1.abortEarly) {
                 dataset.typed = false;
                 break;
               }
             }
-            if (!valueDataset.typed) {
-              dataset.typed = false;
-            }
+            if (!valueDataset.typed) dataset.typed = false;
             dataset.value[key] = valueDataset.value;
-          } else if (valueSchema.fallback !== void 0) {
-            dataset.value[key] = getFallback(valueSchema);
-          } else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
-            _addIssue(this, "key", dataset, config2, {
+          } else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */getFallback(valueSchema);else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+            _addIssue(this, "key", dataset, config$1, {
               input: void 0,
               expected: `"${key}"`,
               path: [{
@@ -431,56 +535,80 @@ function object(entries, message) {
                 origin: "key",
                 input,
                 key,
-                // @ts-expect-error
                 value: input[key]
               }]
             });
-            if (config2.abortEarly) {
-              break;
-            }
+            if (config$1.abortEarly) break;
           }
         }
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+      } else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 
-// src/schemas/string/string.ts
-// @__NO_SIDE_EFFECTS__
-function string(message) {
+//#endregion
+//#region src/schemas/string/string.ts
+/* @__NO_SIDE_EFFECTS__ */
+function string(message$1) {
   return {
     kind: "schema",
     type: "string",
     reference: string,
     expects: "string",
     async: false,
-    message,
+    message: message$1,
     get "~standard"() {
-      return _getStandardProps(this);
+      return /* @__PURE__ */_getStandardProps(this);
     },
-    "~run"(dataset, config2) {
-      if (typeof dataset.value === "string") {
-        dataset.typed = true;
-      } else {
-        _addIssue(this, "type", dataset, config2);
-      }
+    "~run"(dataset, config$1) {
+      if (typeof dataset.value === "string") dataset.typed = true;else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
 }
 
-// src/methods/parse/parse.ts
-function parse(schema, input, config2) {
+//#endregion
+//#region src/methods/parse/parse.ts
+/**
+* Parses an unknown input based on a schema.
+*
+* @param schema The schema to be used.
+* @param input The input to be parsed.
+* @param config The parse configuration.
+*
+* @returns The parsed input.
+*/
+function parse(schema, input, config$1) {
   const dataset = schema["~run"]({
     value: input
-  }, getGlobalConfig(config2));
-  if (dataset.issues) {
-    throw new ValiError(dataset.issues);
-  }
+  }, /* @__PURE__ */getGlobalConfig());
+  if (dataset.issues) throw new ValiError(dataset.issues);
   return dataset.value;
+}
+
+//#endregion
+//#region src/methods/safeParse/safeParse.ts
+/**
+* Parses an unknown input based on a schema.
+*
+* @param schema The schema to be used.
+* @param input The input to be parsed.
+* @param config The parse configuration.
+*
+* @returns The parse result.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function safeParse(schema, input, config$1) {
+  const dataset = schema["~run"]({
+    value: input
+  }, /* @__PURE__ */getGlobalConfig());
+  return {
+    typed: dataset.typed,
+    success: !dataset.issues,
+    output: dataset.value,
+    issues: dataset.issues
+  };
 }
 
 function handleError(logger, context, error) {
@@ -702,21 +830,95 @@ const onLeaderboardReset = function (ctx, logger, nk, leaderboard, expiryTime) {
   }
 };
 
+const MatchParticipantSchema = object({
+  userId: string(),
+  result: string(),
+  score: number()
+});
+const MatchPayloadSchema = object({
+  gameId: string(),
+  participants: array(MatchParticipantSchema)
+});
+const matchresult = function (ctx, logger, nk, payload) {
+  try {
+    const input = JSON.parse(payload || '{}');
+    const parsed = safeParse(MatchPayloadSchema, input);
+    if (!parsed.success) throw Error('Invalid argument');
+    const {
+      gameId,
+      participants
+    } = parsed.output;
+    const gameRecords = nk.storageRead([{
+      collection: 'games',
+      key: gameId,
+      userId: '00000000-0000-0000-0000-000000000000'
+    }]);
+    if (gameRecords.length === 0) throw Error('Game is not found');
+    const gameConfig = gameRecords[0].value;
+    const matchId = nk.uuidv4();
+    for (const player of participants) {
+      let coinChangeSet = -gameConfig.entryFee;
+      if (player.result === 'win') {
+        coinChangeSet += gameConfig.winReward;
+      } else if (player.result === 'lose') {
+        coinChangeSet += gameConfig.loseReward;
+      }
+      const changeset = {
+        coins: coinChangeSet,
+        xp: gameConfig.xpReward
+      };
+      const metadata = {
+        matchId: matchId,
+        gameName: gameConfig.name
+      };
+      nk.walletUpdate(player.userId, changeset, metadata, true);
+      if (player.result === 'win' && player.score > 0) {
+        nk.leaderboardRecordWrite('weekly_coins_leaderboard', player.userId, ctx.username, player.score);
+      }
+      nk.notificationSend(player.userId, `Game ${gameConfig.name} is over.`, {
+        result: player.result,
+        coins: coinChangeSet
+      }, 1, '00000000-0000-0000-0000-000000000000', true);
+    }
+    nk.storageWrite([{
+      collection: 'match_history',
+      key: matchId,
+      userId: '00000000-0000-0000-0000-000000000000',
+      value: {
+        matchId,
+        gameId,
+        gameName: gameConfig.name,
+        time: Date.now(),
+        players: participants
+      },
+      permissionRead: 2,
+      permissionWrite: 0
+    }]);
+    return JSON.stringify({
+      success: true,
+      matchId
+    });
+  } catch (error) {
+    return handleError(logger, 'matchresult', error);
+  }
+};
+
 function InitModule(ctx, logger, nk, initializer) {
   globalThis.afterAuthenticateDevice = afterAuthenticateDevice;
   globalThis.onLeaderboardReset = onLeaderboardReset;
   initLeaderboard(ctx, logger, nk);
   initializer.registerAfterAuthenticateDevice(afterAuthenticateDevice);
   initializer.registerLeaderboardReset(onLeaderboardReset);
-  initializer.registerRpc("request_otp", requestOtp);
-  initializer.registerRpc("verify_otp", verifyOtp);
-  initializer.registerRpc("loginWithPassword", loginWithPassword);
-  initializer.registerRpc("setGameConfig", setGameConfig);
-  initializer.registerRpc("getGameConfig", getGameConfig);
-  initializer.registerRpc("get_shop_items", getShopItemsRpc);
-  initializer.registerRpc("get_inventory", getInventoryRpc);
-  initializer.registerRpc("set_active_item", setActiveItemRpc);
-  initializer.registerRpc("buy_item", buyItemRpc);
+  initializer.registerRpc('request_otp', requestOtp);
+  initializer.registerRpc('verify_otp', verifyOtp);
+  initializer.registerRpc('loginWithPassword', loginWithPassword);
+  initializer.registerRpc('setGameConfig', setGameConfig);
+  initializer.registerRpc('getGameConfig', getGameConfig);
+  initializer.registerRpc('matchresult', matchresult);
+  initializer.registerRpc('get_shop_items', getShopItemsRpc);
+  initializer.registerRpc('get_inventory', getInventoryRpc);
+  initializer.registerRpc('set_active_item', setActiveItemRpc);
+  initializer.registerRpc('buy_item', buyItemRpc);
   logger.info('JavaScript logic loaded.');
 }
 !InitModule && InitModule.bind(null);
