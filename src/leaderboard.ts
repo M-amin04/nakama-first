@@ -43,7 +43,7 @@ export const onLeaderboardReset: nkruntime.LeaderboardResetFunction = function (
       const userId = record.ownerId;
 
       const changeset = {
-        coins: 300,
+        coin: 300,
       };
 
       const metadata = {

@@ -1,6 +1,8 @@
 import * as v from 'valibot';
 import { handleError } from './utils.js';
 
+const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
+
 const MatchParticipantSchema = v.object({
   userId: v.string(),
   result: v.string(),
@@ -25,7 +27,7 @@ export const matchresult: nkruntime.RpcFunction = function (ctx, logger, nk, pay
       {
         collection: 'games',
         key: gameId,
-        userId: '00000000-0000-0000-0000-000000000000',
+        userId: SYSTEM_USER_ID,
       },
     ]);
 
@@ -38,14 +40,14 @@ export const matchresult: nkruntime.RpcFunction = function (ctx, logger, nk, pay
       let coinChangeSet = -gameConfig.entryFee;
 
       if (player.result === 'win') {
-        coinChangeSet += gameConfig.winReward;
+        coinChangeSet += gameConfig.winnerReward;
       } else if (player.result === 'lose') {
-        coinChangeSet += gameConfig.loseReward;
+        coinChangeSet += gameConfig.loserReward;
       }
 
       const changeset = {
-        coins: coinChangeSet,
-        xp: gameConfig.xpReward,
+        coin: Math.floor(coinChangeSet),
+        xp: Math.floor(gameConfig.xp || 0),
       };
 
       const metadata = {
@@ -63,26 +65,45 @@ export const matchresult: nkruntime.RpcFunction = function (ctx, logger, nk, pay
           player.score,
         );
       }
-
-      nk.notificationSend(
-        player.userId,
-        `Game ${gameConfig.name} is over.`,
-        { result: player.result, coins: coinChangeSet },
-        1,
-        '00000000-0000-0000-0000-000000000000',
-        true,
-      );
     }
+
+
+    const notifications: nkruntime.Notification[] = participants.map(player => {
+      let coinChangeSet = -gameConfig.entryFee;
+      if (player.result === 'win') {
+        coinChangeSet += gameConfig.winnerReward;
+      } else if (player.result === 'lose') {
+        coinChangeSet += gameConfig.loserReward;
+      }
+
+      return {
+        id: '',
+        userId: player.userId,
+        subject: `Game ${gameConfig.gameName} is over.`,
+        content: { 
+          matchId: matchId, 
+          result: player.result, 
+          coins: coinChangeSet 
+        },
+        code: 1,
+        senderId: SYSTEM_USER_ID,
+        persistent: true,
+        createTime: Math.floor(Date.now() / 1000)
+      };
+    });
+
+    nk.notificationsSend(notifications);
+
 
     nk.storageWrite([
       {
         collection: 'match_history',
         key: matchId,
-        userId: '00000000-0000-0000-0000-000000000000',
+        userId: SYSTEM_USER_ID,
         value: {
           matchId,
           gameId,
-          gameName: gameConfig.name,
+          gameName: gameConfig.gameName,
           time: Date.now(),
           players: participants,
         },

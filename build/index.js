@@ -617,7 +617,7 @@ function handleError(logger, context, error) {
   throw new Error(errorMessage);
 }
 
-const SYSTEM_USER_ID$1 = '00000000-0000-0000-0000-000000000000';
+const SYSTEM_USER_ID$2 = '00000000-0000-0000-0000-000000000000';
 const requestOtp = function (ctx, logger, nk, payload) {
   if (!payload) throw new Error('Payload is empty');
   try {
@@ -630,7 +630,7 @@ const requestOtp = function (ctx, logger, nk, payload) {
     nk.storageWrite([{
       collection: 'phone_verification',
       key: data.phone,
-      userId: SYSTEM_USER_ID$1,
+      userId: SYSTEM_USER_ID$2,
       value: {
         otp: otp,
         password: data.password,
@@ -658,7 +658,7 @@ const verifyOtp = function (ctx, logger, nk, payload) {
     const records = nk.storageRead([{
       collection: 'phone_verification',
       key: data.phone,
-      userId: SYSTEM_USER_ID$1
+      userId: SYSTEM_USER_ID$2
     }]);
     if (records.length === 0) throw new Error('OTP not found or expired');
     const storedData = records[0].value;
@@ -667,13 +667,26 @@ const verifyOtp = function (ctx, logger, nk, payload) {
     nk.storageDelete([{
       collection: 'phone_verification',
       key: data.phone,
-      userId: SYSTEM_USER_ID$1
+      userId: SYSTEM_USER_ID$2
     }]);
     const authResult = nk.authenticateCustom(data.phone, data.phone, true);
+    if (authResult.created) {
+      const initialCoins = 1000;
+      const initialXp = 50;
+      const changeset = {
+        coin: initialCoins,
+        xp: initialXp
+      };
+      const metadata = {
+        reason: 'Initial registration bonus'
+      };
+      nk.walletUpdate(authResult.userId, changeset, metadata, true);
+      logger.info(`Granted 1000 coins and 50 XP to new user: ${authResult.userId}`);
+    }
     nk.storageWrite([{
       collection: 'user_credentials',
       key: authResult.userId,
-      userId: SYSTEM_USER_ID$1,
+      userId: SYSTEM_USER_ID$2,
       value: {
         password: storedData.password
       },
@@ -707,7 +720,7 @@ const loginWithPassword = function (ctx, logger, nk, payload) {
     const credentials = nk.storageRead([{
       collection: 'user_credentials',
       key: authResult.userId,
-      userId: SYSTEM_USER_ID$1
+      userId: SYSTEM_USER_ID$2
     }]);
     if (credentials.length === 0) {
       throw new Error('Incorrect credentials');
@@ -727,7 +740,7 @@ const loginWithPassword = function (ctx, logger, nk, payload) {
   }
 };
 
-const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
+const SYSTEM_USER_ID$1 = '00000000-0000-0000-0000-000000000000';
 const setGameConfig = function (ctx, logger, nk, payload) {
   if (!ctx.userId) throw new Error('Unauthorized');
   if (!payload) throw new Error('Payload is empty');
@@ -750,7 +763,7 @@ const setGameConfig = function (ctx, logger, nk, payload) {
     nk.storageWrite([{
       collection: 'games',
       key: data.gameId,
-      userId: SYSTEM_USER_ID,
+      userId: SYSTEM_USER_ID$1,
       value: {
         gameName: data.gameName,
         entryFee: data.entryFee,
@@ -780,7 +793,7 @@ const getGameConfig = function (ctx, logger, nk, payload) {
     const records = nk.storageRead([{
       collection: 'games',
       key: data.gameId,
-      userId: SYSTEM_USER_ID
+      userId: SYSTEM_USER_ID$1
     }]);
     if (records.length === 0) {
       throw new Error('Game not found');
@@ -817,7 +830,7 @@ const onLeaderboardReset = function (ctx, logger, nk, leaderboard, expiryTime) {
       const record = records[i];
       const userId = record.ownerId;
       const changeset = {
-        coins: 300
+        coin: 300
       };
       const metadata = {
         reason: 'Weekly leaderboard top 3 reward'
@@ -830,6 +843,7 @@ const onLeaderboardReset = function (ctx, logger, nk, leaderboard, expiryTime) {
   }
 };
 
+const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
 const MatchParticipantSchema = object({
   userId: string(),
   result: string(),
@@ -851,7 +865,7 @@ const matchresult = function (ctx, logger, nk, payload) {
     const gameRecords = nk.storageRead([{
       collection: 'games',
       key: gameId,
-      userId: '00000000-0000-0000-0000-000000000000'
+      userId: SYSTEM_USER_ID
     }]);
     if (gameRecords.length === 0) throw Error('Game is not found');
     const gameConfig = gameRecords[0].value;
@@ -859,13 +873,13 @@ const matchresult = function (ctx, logger, nk, payload) {
     for (const player of participants) {
       let coinChangeSet = -gameConfig.entryFee;
       if (player.result === 'win') {
-        coinChangeSet += gameConfig.winReward;
+        coinChangeSet += gameConfig.winnerReward;
       } else if (player.result === 'lose') {
-        coinChangeSet += gameConfig.loseReward;
+        coinChangeSet += gameConfig.loserReward;
       }
       const changeset = {
-        coins: coinChangeSet,
-        xp: gameConfig.xpReward
+        coin: Math.floor(coinChangeSet),
+        xp: Math.floor(gameConfig.xp || 0)
       };
       const metadata = {
         matchId: matchId,
@@ -875,19 +889,38 @@ const matchresult = function (ctx, logger, nk, payload) {
       if (player.result === 'win' && player.score > 0) {
         nk.leaderboardRecordWrite('weekly_coins_leaderboard', player.userId, ctx.username, player.score);
       }
-      nk.notificationSend(player.userId, `Game ${gameConfig.name} is over.`, {
-        result: player.result,
-        coins: coinChangeSet
-      }, 1, '00000000-0000-0000-0000-000000000000', true);
     }
+    const notifications = participants.map(player => {
+      let coinChangeSet = -gameConfig.entryFee;
+      if (player.result === 'win') {
+        coinChangeSet += gameConfig.winnerReward;
+      } else if (player.result === 'lose') {
+        coinChangeSet += gameConfig.loserReward;
+      }
+      return {
+        id: '',
+        userId: player.userId,
+        subject: `Game ${gameConfig.gameName} is over.`,
+        content: {
+          matchId: matchId,
+          result: player.result,
+          coins: coinChangeSet
+        },
+        code: 1,
+        senderId: SYSTEM_USER_ID,
+        persistent: true,
+        createTime: Math.floor(Date.now() / 1000)
+      };
+    });
+    nk.notificationsSend(notifications);
     nk.storageWrite([{
       collection: 'match_history',
       key: matchId,
-      userId: '00000000-0000-0000-0000-000000000000',
+      userId: SYSTEM_USER_ID,
       value: {
         matchId,
         gameId,
-        gameName: gameConfig.name,
+        gameName: gameConfig.gameName,
         time: Date.now(),
         players: participants
       },

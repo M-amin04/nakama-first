@@ -70,6 +70,23 @@ export const verifyOtp: nkruntime.RpcFunction = function (ctx, logger, nk, paylo
 
     const authResult = nk.authenticateCustom(data.phone, data.phone, true);
 
+    if (authResult.created) {
+      const initialCoins = 1000;
+      const initialXp = 50;
+    
+      const changeset = {
+        coin: initialCoins,
+        xp: initialXp
+        }
+
+      const metadata = {
+      reason: 'Initial registration bonus'
+      }
+
+      nk.walletUpdate(authResult.userId, changeset, metadata, true)
+      logger.info(`Granted 1000 coins and 50 XP to new user: ${authResult.userId}`)
+      }
+
     nk.storageWrite([
       {
         collection: 'user_credentials',
@@ -96,6 +113,8 @@ export const verifyOtp: nkruntime.RpcFunction = function (ctx, logger, nk, paylo
     return handleError(logger, 'verifyOtp', error);
   }
 };
+
+
 
 export const loginWithPassword: nkruntime.RpcFunction = function (ctx, logger, nk, payload) {
   if (!payload) throw new Error('Payload is empty');
