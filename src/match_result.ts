@@ -1,5 +1,4 @@
 import * as v from 'valibot';
-import { handleError } from './utils.js';
 
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
 
@@ -19,7 +18,9 @@ export const matchresult: nkruntime.RpcFunction = function (ctx, logger, nk, pay
     const input = JSON.parse(payload || '{}');
     const parsed = v.safeParse(MatchPayloadSchema, input);
 
-    if (!parsed.success) throw Error('Invalid argument');
+    if (!parsed.success) {
+      throw { message: 'Invalid argument', code: 3 } as nkruntime.Error;
+    }
 
     const { gameId, participants } = parsed.output;
 
@@ -31,7 +32,9 @@ export const matchresult: nkruntime.RpcFunction = function (ctx, logger, nk, pay
       },
     ]);
 
-    if (gameRecords.length === 0) throw Error('Game is not found');
+    if (gameRecords.length === 0) {
+      throw { message: 'Game is not found', code: 5 } as nkruntime.Error;
+    }
 
     const gameConfig = gameRecords[0].value;
     const matchId = nk.uuidv4();
@@ -106,7 +109,11 @@ export const matchresult: nkruntime.RpcFunction = function (ctx, logger, nk, pay
     ]);
 
     return JSON.stringify({ success: true, matchId });
-  } catch (error) {
-    return handleError(logger, 'matchresult', error);
+  } catch (error: any) {
+    logger.error(`Error in matchresult: ${error?.Message || error}`);
+
+    if (error && typeof error.code === 'number') throw error;
+
+    throw { message: error?.Message, code: 3 } as nkruntime.Error;
   }
 };

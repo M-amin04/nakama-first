@@ -1,10 +1,11 @@
 import * as v from 'valibot';
-import { handleError } from './utils.js';
 
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 export const requestOtp: nkruntime.RpcFunction = function (ctx, logger, nk, payload) {
-  if (!payload) throw new Error('Payload is empty');
+  if (!payload) {
+    throw { message: 'Payload is empty.', code: 3 } as nkruntime.Error;
+  }
 
   try {
     const RequestOtpSchema = v.object({
@@ -26,15 +27,20 @@ export const requestOtp: nkruntime.RpcFunction = function (ctx, logger, nk, payl
       },
     ]);
 
-    logger.info(`OTP for phone ${data.phone}: ${otp}`);
     return JSON.stringify({ success: true });
   } catch (error: any) {
-    return handleError(logger, 'requestOtp', error);
+    logger.error(`Error in requestOtp: ${error?.Message || error}`);
+
+    if (error && typeof error.code === 'number') throw error;
+
+    throw { message: error?.Message, code: 3 } as nkruntime.Error;
   }
 };
 
 export const verifyOtp: nkruntime.RpcFunction = function (ctx, logger, nk, payload) {
-  if (!payload) throw new Error('Payload is empty');
+  if (!payload) {
+    throw { message: 'Payload is empty.', code: 3 } as nkruntime.Error;
+  }
 
   try {
     const VerifyOtpSchema = v.object({
@@ -52,13 +58,28 @@ export const verifyOtp: nkruntime.RpcFunction = function (ctx, logger, nk, paylo
       },
     ]);
 
-    if (records.length === 0) throw new Error('OTP not found or expired');
+    if (records.length === 0) {
+      throw {
+        message: 'OTP not found or expired',
+        code: 5,
+      } as nkruntime.Error;
+    }
 
     const storedData = records[0].value;
 
-    if (Date.now() - storedData.createdAt > 120000) throw new Error('OTP has expired');
+    if (Date.now() - storedData.createdAt > 120000) {
+      throw {
+        message: 'OTP has expired',
+        code: 3,
+      } as nkruntime.Error;
+    }
 
-    if (storedData.otp !== data.otp) throw new Error('Invalid OTP');
+    if (storedData.otp !== data.otp) {
+      throw {
+        message: 'Invalid OTP',
+        code: 3,
+      } as nkruntime.Error;
+    }
 
     nk.storageDelete([
       {
@@ -84,7 +105,6 @@ export const verifyOtp: nkruntime.RpcFunction = function (ctx, logger, nk, paylo
       };
 
       nk.walletUpdate(authResult.userId, changeset, metadata, true);
-      logger.info(`Granted 1000 coins and 50 XP to new user: ${authResult.userId}`);
     }
 
     nk.storageWrite([
@@ -110,12 +130,18 @@ export const verifyOtp: nkruntime.RpcFunction = function (ctx, logger, nk, paylo
       token: token,
     });
   } catch (error: any) {
-    return handleError(logger, 'verifyOtp', error);
+    logger.error(`Error in verifyOtp: ${error?.message || error}`);
+
+    if (error && typeof error.code === 'number') throw error;
+
+    throw { message: error?.message || String(error), code: 3 } as nkruntime.Error;
   }
 };
 
 export const loginWithPassword: nkruntime.RpcFunction = function (ctx, logger, nk, payload) {
-  if (!payload) throw new Error('Payload is empty');
+  if (!payload) {
+    throw { message: 'Payload is empty', code: 3 } as nkruntime.Error;
+  }
 
   try {
     const LoginSchema = v.object({
@@ -130,7 +156,10 @@ export const loginWithPassword: nkruntime.RpcFunction = function (ctx, logger, n
     try {
       authResult = nk.authenticateCustom(data.phone, data.phone, false);
     } catch (error) {
-      throw new Error('User does not exist or incorrect credentials');
+      throw {
+        message: 'User does not exist or incorrect credentials',
+        code: 16,
+      } as nkruntime.Error; // UNAUTHENTICATED
     }
 
     const credentials = nk.storageRead([
@@ -142,13 +171,13 @@ export const loginWithPassword: nkruntime.RpcFunction = function (ctx, logger, n
     ]);
 
     if (credentials.length === 0) {
-      throw new Error('Incorrect credentials');
+      throw { message: 'Incorrect credentials', code: 16 } as nkruntime.Error;
     }
 
     const storedPassword = credentials[0].value.password;
 
     if (storedPassword !== data.password) {
-      throw new Error('Incorrect password');
+      throw { message: 'Incorrect password', code: 16 } as nkruntime.Error;
     }
 
     const token = nk.authenticateTokenGenerate(
@@ -158,7 +187,11 @@ export const loginWithPassword: nkruntime.RpcFunction = function (ctx, logger, n
     );
 
     return JSON.stringify({ success: true, userId: authResult.userId, token: token });
-  } catch (error) {
-    return handleError(logger, 'loginWithPassword', error);
+  } catch (error: any) {
+    logger.error(`Error in loginWithPassword: ${error?.message || error}`);
+
+    if (error && typeof error.code === 'number') throw error;
+
+    throw { message: error?.message || String(error), code: 3 } as nkruntime.Error;
   }
 };

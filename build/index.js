@@ -611,15 +611,14 @@ function safeParse(schema, input, config$1) {
   };
 }
 
-function handleError(logger, context, error) {
-  const errorMessage = (error === null || error === void 0 ? void 0 : error.message) || String(error);
-  logger.error(`Error in ${context}: ${errorMessage}`);
-  throw new Error(errorMessage);
-}
-
 const SYSTEM_USER_ID$2 = '00000000-0000-0000-0000-000000000000';
 const requestOtp = function (ctx, logger, nk, payload) {
-  if (!payload) throw new Error('Payload is empty');
+  if (!payload) {
+    throw {
+      message: 'Payload is empty.',
+      code: 3
+    };
+  }
   try {
     const RequestOtpSchema = object({
       phone: string(),
@@ -639,16 +638,25 @@ const requestOtp = function (ctx, logger, nk, payload) {
       permissionRead: 0,
       permissionWrite: 0
     }]);
-    logger.info(`OTP for phone ${data.phone}: ${otp}`);
     return JSON.stringify({
       success: true
     });
   } catch (error) {
-    return handleError(logger, 'requestOtp', error);
+    logger.error(`Error in requestOtp: ${(error === null || error === void 0 ? void 0 : error.Message) || error}`);
+    if (error && typeof error.code === 'number') throw error;
+    throw {
+      message: error === null || error === void 0 ? void 0 : error.Message,
+      code: 3
+    };
   }
 };
 const verifyOtp = function (ctx, logger, nk, payload) {
-  if (!payload) throw new Error('Payload is empty');
+  if (!payload) {
+    throw {
+      message: 'Payload is empty.',
+      code: 3
+    };
+  }
   try {
     const VerifyOtpSchema = object({
       phone: string(),
@@ -660,10 +668,25 @@ const verifyOtp = function (ctx, logger, nk, payload) {
       key: data.phone,
       userId: SYSTEM_USER_ID$2
     }]);
-    if (records.length === 0) throw new Error('OTP not found or expired');
+    if (records.length === 0) {
+      throw {
+        message: 'OTP not found or expired',
+        code: 5
+      };
+    }
     const storedData = records[0].value;
-    if (Date.now() - storedData.createdAt > 120000) throw new Error('OTP has expired');
-    if (storedData.otp !== data.otp) throw new Error('Invalid OTP');
+    if (Date.now() - storedData.createdAt > 120000) {
+      throw {
+        message: 'OTP has expired',
+        code: 3
+      };
+    }
+    if (storedData.otp !== data.otp) {
+      throw {
+        message: 'Invalid OTP',
+        code: 3
+      };
+    }
     nk.storageDelete([{
       collection: 'phone_verification',
       key: data.phone,
@@ -681,7 +704,6 @@ const verifyOtp = function (ctx, logger, nk, payload) {
         reason: 'Initial registration bonus'
       };
       nk.walletUpdate(authResult.userId, changeset, metadata, true);
-      logger.info(`Granted 1000 coins and 50 XP to new user: ${authResult.userId}`);
     }
     nk.storageWrite([{
       collection: 'user_credentials',
@@ -700,11 +722,21 @@ const verifyOtp = function (ctx, logger, nk, payload) {
       token: token
     });
   } catch (error) {
-    return handleError(logger, 'verifyOtp', error);
+    logger.error(`Error in verifyOtp: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
+    if (error && typeof error.code === 'number') throw error;
+    throw {
+      message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
+      code: 3
+    };
   }
 };
 const loginWithPassword = function (ctx, logger, nk, payload) {
-  if (!payload) throw new Error('Payload is empty');
+  if (!payload) {
+    throw {
+      message: 'Payload is empty',
+      code: 3
+    };
+  }
   try {
     const LoginSchema = object({
       phone: string(),
@@ -715,7 +747,10 @@ const loginWithPassword = function (ctx, logger, nk, payload) {
     try {
       authResult = nk.authenticateCustom(data.phone, data.phone, false);
     } catch (error) {
-      throw new Error('User does not exist or incorrect credentials');
+      throw {
+        message: 'User does not exist or incorrect credentials',
+        code: 16
+      };
     }
     const credentials = nk.storageRead([{
       collection: 'user_credentials',
@@ -723,11 +758,17 @@ const loginWithPassword = function (ctx, logger, nk, payload) {
       userId: SYSTEM_USER_ID$2
     }]);
     if (credentials.length === 0) {
-      throw new Error('Incorrect credentials');
+      throw {
+        message: 'Incorrect credentials',
+        code: 16
+      };
     }
     const storedPassword = credentials[0].value.password;
     if (storedPassword !== data.password) {
-      throw new Error('Incorrect password');
+      throw {
+        message: 'Incorrect password',
+        code: 16
+      };
     }
     const token = nk.authenticateTokenGenerate(authResult.userId, authResult.username, Math.floor(Date.now() / 1000) + 3600);
     return JSON.stringify({
@@ -736,19 +777,37 @@ const loginWithPassword = function (ctx, logger, nk, payload) {
       token: token
     });
   } catch (error) {
-    return handleError(logger, 'loginWithPassword', error);
+    logger.error(`Error in loginWithPassword: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
+    if (error && typeof error.code === 'number') throw error;
+    throw {
+      message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
+      code: 3
+    };
   }
 };
 
 const SYSTEM_USER_ID$1 = '00000000-0000-0000-0000-000000000000';
 const setGameConfig = function (ctx, logger, nk, payload) {
-  if (!ctx.userId) throw new Error('Unauthorized');
-  if (!payload) throw new Error('Payload is empty');
+  if (!ctx.userId) {
+    throw {
+      message: 'Unauthorized',
+      code: 16
+    };
+  }
+  if (!payload) {
+    throw {
+      message: 'Payload is empty',
+      code: 3
+    };
+  }
   try {
     const account = nk.accountGetId(ctx.userId);
     const metadata = account.user.metadata || {};
     if (metadata.role !== 'admin') {
-      throw new Error('Only admin can manage games');
+      throw {
+        message: 'Only admin can manage games',
+        code: 7
+      };
     }
     const GameSchema = object({
       gameId: string(),
@@ -775,16 +834,25 @@ const setGameConfig = function (ctx, logger, nk, payload) {
       permissionRead: 2,
       permissionWrite: 0
     }]);
-    logger.info(`Game ${data.gameName} (${data.gameId}) created/updated by admin.`);
     return JSON.stringify({
       success: true
     });
   } catch (error) {
-    return handleError(logger, 'setGameConfig', error);
+    logger.error(`Error in setGameConfig: ${(error === null || error === void 0 ? void 0 : error.Message) || error}`);
+    if (error && typeof error.code === 'number') throw error;
+    throw {
+      message: error === null || error === void 0 ? void 0 : error.Message,
+      code: 3
+    };
   }
 };
 const getGameConfig = function (ctx, logger, nk, payload) {
-  if (!payload) throw new Error('Payload is empty');
+  if (!payload) {
+    throw {
+      message: 'Payload is empty',
+      code: 3
+    };
+  }
   try {
     const GetGameSchema = object({
       gameId: string()
@@ -796,14 +864,22 @@ const getGameConfig = function (ctx, logger, nk, payload) {
       userId: SYSTEM_USER_ID$1
     }]);
     if (records.length === 0) {
-      throw new Error('Game not found');
+      throw {
+        message: 'Game not found',
+        code: 5
+      };
     }
     return JSON.stringify({
       success: true,
       game: records[0].value
     });
   } catch (error) {
-    return handleError(logger, 'getGameConfig', error);
+    logger.error(`Error in getGameConfig: ${(error === null || error === void 0 ? void 0 : error.Message) || error}`);
+    if (error && typeof error.code === 'number') throw error;
+    throw {
+      message: error === null || error === void 0 ? void 0 : error.Message,
+      code: 3
+    };
   }
 };
 
@@ -815,9 +891,8 @@ function initLeaderboard(ctx, logger, nk) {
     const operator = "set";
     const resetSchedule = '0 0 * * 0';
     nk.leaderboardCreate(LEADERBOARD_ID, authoritative, sortOrder, operator, resetSchedule, {});
-    logger.info(`Leaderboard '${LEADERBOARD_ID}' created or already exists.`);
   } catch (error) {
-    return handleError(logger, 'initLeaderboard', error);
+    logger.error(`Error in initLeaderboard: ${(error === null || error === void 0 ? void 0 : error.message) || String(error)}`);
   }
 }
 const onLeaderboardReset = function (ctx, logger, nk, leaderboard, expiryTime) {
@@ -836,10 +911,9 @@ const onLeaderboardReset = function (ctx, logger, nk, leaderboard, expiryTime) {
         reason: 'Weekly leaderboard top 3 reward'
       };
       nk.walletUpdate(userId, changeset, metadata, true);
-      logger.info(`Awarded 300 coins to user ${userId} for placing in top 3.`);
     }
   } catch (error) {
-    return handleError(logger, 'onLeaderboardReset', error);
+    logger.error(`Error in onLeaderboardReset: ${(error === null || error === void 0 ? void 0 : error.message) || String(error)}`);
   }
 };
 
@@ -857,7 +931,12 @@ const matchresult = function (ctx, logger, nk, payload) {
   try {
     const input = JSON.parse(payload || '{}');
     const parsed = safeParse(MatchPayloadSchema, input);
-    if (!parsed.success) throw Error('Invalid argument');
+    if (!parsed.success) {
+      throw {
+        message: 'Invalid argument',
+        code: 3
+      };
+    }
     const {
       gameId,
       participants
@@ -867,7 +946,12 @@ const matchresult = function (ctx, logger, nk, payload) {
       key: gameId,
       userId: SYSTEM_USER_ID
     }]);
-    if (gameRecords.length === 0) throw Error('Game is not found');
+    if (gameRecords.length === 0) {
+      throw {
+        message: 'Game is not found',
+        code: 5
+      };
+    }
     const gameConfig = gameRecords[0].value;
     const matchId = nk.uuidv4();
     for (const player of participants) {
@@ -883,14 +967,13 @@ const matchresult = function (ctx, logger, nk, payload) {
       };
       const metadata = {
         matchId: matchId,
-        gameName: gameConfig.name
+        gameName: gameConfig.gameName
       };
       nk.walletUpdate(player.userId, changeset, metadata, true);
       if (player.result === 'win' && player.score > 0) {
         nk.leaderboardRecordWrite('leaderboard', player.userId, ctx.username, player.score);
       }
     }
-    ;
     const notifications = participants.map(player => {
       let coinChangeSet = -gameConfig.entryFee;
       if (player.result === 'win') {
@@ -933,7 +1016,12 @@ const matchresult = function (ctx, logger, nk, payload) {
       matchId
     });
   } catch (error) {
-    return handleError(logger, 'matchresult', error);
+    logger.error(`Error in matchresult: ${(error === null || error === void 0 ? void 0 : error.Message) || error}`);
+    if (error && typeof error.code === 'number') throw error;
+    throw {
+      message: error === null || error === void 0 ? void 0 : error.Message,
+      code: 3
+    };
   }
 };
 

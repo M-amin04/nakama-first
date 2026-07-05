@@ -1,5 +1,3 @@
-import { handleError } from './utils.js';
-
 const LEADERBOARD_ID = 'leaderboard';
 
 export function initLeaderboard(
@@ -15,10 +13,8 @@ export function initLeaderboard(
     const resetSchedule = '0 0 * * 0';
 
     nk.leaderboardCreate(LEADERBOARD_ID, authoritative, sortOrder, operator, resetSchedule, {});
-
-    logger.info(`Leaderboard '${LEADERBOARD_ID}' created or already exists.`);
-  } catch (error) {
-    return handleError(logger, 'initLeaderboard', error);
+  } catch (error: any) {
+    logger.error(`Error in initLeaderboard: ${error?.message || String(error)}`);
   }
 }
 
@@ -51,10 +47,8 @@ export const onLeaderboardReset: nkruntime.LeaderboardResetFunction = function (
       };
 
       nk.walletUpdate(userId, changeset, metadata, true);
-
-      logger.info(`Awarded 300 coins to user ${userId} for placing in top 3.`);
     }
-  } catch (error) {
-    return handleError(logger, 'onLeaderboardReset', error);
+  } catch (error: any) {
+    logger.error(`Error in onLeaderboardReset: ${error?.message || String(error)}`);
   }
 };

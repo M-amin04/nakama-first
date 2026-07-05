@@ -1,18 +1,21 @@
 import * as v from 'valibot';
-import { handleError } from './utils.js';
 
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 export const setGameConfig: nkruntime.RpcFunction = function (ctx, logger, nk, payload) {
-  if (!ctx.userId) throw new Error('Unauthorized');
-  if (!payload) throw new Error('Payload is empty');
+  if (!ctx.userId) {
+    throw { message: 'Unauthorized', code: 16 } as nkruntime.Error;
+  }
+  if (!payload) {
+    throw { message: 'Payload is empty', code: 3 } as nkruntime.Error;
+  }
 
   try {
     const account = nk.accountGetId(ctx.userId);
     const metadata = account.user.metadata || {};
 
     if (metadata.role !== 'admin') {
-      throw new Error('Only admin can manage games');
+      throw { message: 'Only admin can manage games', code: 7 } as nkruntime.Error;
     }
 
     const GameSchema = v.object({
@@ -45,15 +48,20 @@ export const setGameConfig: nkruntime.RpcFunction = function (ctx, logger, nk, p
       },
     ]);
 
-    logger.info(`Game ${data.gameName} (${data.gameId}) created/updated by admin.`);
     return JSON.stringify({ success: true });
-  } catch (error) {
-    return handleError(logger, 'setGameConfig', error);
+  } catch (error: any) {
+    logger.error(`Error in setGameConfig: ${error?.Message || error}`);
+
+    if (error && typeof error.code === 'number') throw error;
+
+    throw { message: error?.Message, code: 3 } as nkruntime.Error;
   }
 };
 
 export const getGameConfig: nkruntime.RpcFunction = function (ctx, logger, nk, payload) {
-  if (!payload) throw new Error('Payload is empty');
+  if (!payload) {
+    throw { message: 'Payload is empty', code: 3 } as nkruntime.Error;
+  }
 
   try {
     const GetGameSchema = v.object({
@@ -71,14 +79,18 @@ export const getGameConfig: nkruntime.RpcFunction = function (ctx, logger, nk, p
     ]);
 
     if (records.length === 0) {
-      throw new Error('Game not found');
+      throw { message: 'Game not found', code: 5 } as nkruntime.Error;
     }
 
     return JSON.stringify({
       success: true,
       game: records[0].value,
     });
-  } catch (error) {
-    return handleError(logger, 'getGameConfig', error);
+  } catch (error: any) {
+    logger.error(`Error in getGameConfig: ${error?.Message || error}`);
+
+    if (error && typeof error.code === 'number') throw error;
+
+    throw { message: error?.Message, code: 3 } as nkruntime.Error;
   }
 };
