@@ -50,11 +50,11 @@ export const setGameConfig: nkruntime.RpcFunction = function (ctx, logger, nk, p
 
     return JSON.stringify({ success: true });
   } catch (error: any) {
-    logger.error(`Error in setGameConfig: ${error?.Message || error}`);
+    logger.error(`Error in setGameConfig: ${error?.message || error}`);
 
     if (error && typeof error.code === 'number') throw error;
 
-    throw { message: error?.Message, code: 3 } as nkruntime.Error;
+    throw { message: error?.message || String(error), code: 3 } as nkruntime.Error;
   }
 };
 
@@ -87,10 +87,10 @@ export const getGameConfig: nkruntime.RpcFunction = function (ctx, logger, nk, p
       game: records[0].value,
     });
   } catch (error: any) {
-    logger.error(`Error in getGameConfig: ${error?.Message || error}`);
+    logger.error(`Error in getGameConfig: ${error?.message || error}`);
 
     if (error && typeof error.code === 'number') throw error;
 
-    throw { message: error?.Message, code: 3 } as nkruntime.Error;
+    throw { message: error?.message || String(error), code: 3 } as nkruntime.Error;
   }
 };

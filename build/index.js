@@ -642,10 +642,10 @@ const requestOtp = function (ctx, logger, nk, payload) {
       success: true
     });
   } catch (error) {
-    logger.error(`Error in requestOtp: ${(error === null || error === void 0 ? void 0 : error.Message) || error}`);
+    logger.error(`Error in requestOtp: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
     if (error && typeof error.code === 'number') throw error;
     throw {
-      message: error === null || error === void 0 ? void 0 : error.Message,
+      message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
       code: 3
     };
   }
@@ -670,7 +670,7 @@ const verifyOtp = function (ctx, logger, nk, payload) {
     }]);
     if (records.length === 0) {
       throw {
-        message: 'OTP not found or expired',
+        message: 'OTP not found.',
         code: 5
       };
     }
@@ -701,7 +701,7 @@ const verifyOtp = function (ctx, logger, nk, payload) {
         xp: initialXp
       };
       const metadata = {
-        reason: 'Initial registration bonus'
+        reason: 'Initial registration bonus.'
       };
       nk.walletUpdate(authResult.userId, changeset, metadata, true);
     }
@@ -838,10 +838,10 @@ const setGameConfig = function (ctx, logger, nk, payload) {
       success: true
     });
   } catch (error) {
-    logger.error(`Error in setGameConfig: ${(error === null || error === void 0 ? void 0 : error.Message) || error}`);
+    logger.error(`Error in setGameConfig: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
     if (error && typeof error.code === 'number') throw error;
     throw {
-      message: error === null || error === void 0 ? void 0 : error.Message,
+      message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
       code: 3
     };
   }
@@ -874,10 +874,10 @@ const getGameConfig = function (ctx, logger, nk, payload) {
       game: records[0].value
     });
   } catch (error) {
-    logger.error(`Error in getGameConfig: ${(error === null || error === void 0 ? void 0 : error.Message) || error}`);
+    logger.error(`Error in getGameConfig: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
     if (error && typeof error.code === 'number') throw error;
     throw {
-      message: error === null || error === void 0 ? void 0 : error.Message,
+      message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
       code: 3
     };
   }
@@ -1016,10 +1016,10 @@ const matchresult = function (ctx, logger, nk, payload) {
       matchId
     });
   } catch (error) {
-    logger.error(`Error in matchresult: ${(error === null || error === void 0 ? void 0 : error.Message) || error}`);
+    logger.error(`Error in matchresult: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
     if (error && typeof error.code === 'number') throw error;
     throw {
-      message: error === null || error === void 0 ? void 0 : error.Message,
+      message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
       code: 3
     };
   }

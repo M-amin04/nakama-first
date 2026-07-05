@@ -29,11 +29,11 @@ export const requestOtp: nkruntime.RpcFunction = function (ctx, logger, nk, payl
 
     return JSON.stringify({ success: true });
   } catch (error: any) {
-    logger.error(`Error in requestOtp: ${error?.Message || error}`);
+    logger.error(`Error in requestOtp: ${error?.message || error}`);
 
     if (error && typeof error.code === 'number') throw error;
 
-    throw { message: error?.Message, code: 3 } as nkruntime.Error;
+    throw { message: error?.message || String(error), code: 3 } as nkruntime.Error;
   }
 };
 
@@ -60,7 +60,7 @@ export const verifyOtp: nkruntime.RpcFunction = function (ctx, logger, nk, paylo
 
     if (records.length === 0) {
       throw {
-        message: 'OTP not found or expired',
+        message: 'OTP not found.',
         code: 5,
       } as nkruntime.Error;
     }
@@ -101,7 +101,7 @@ export const verifyOtp: nkruntime.RpcFunction = function (ctx, logger, nk, paylo
       };
 
       const metadata = {
-        reason: 'Initial registration bonus',
+        reason: 'Initial registration bonus.',
       };
 
       nk.walletUpdate(authResult.userId, changeset, metadata, true);

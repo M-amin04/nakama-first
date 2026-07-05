@@ -110,10 +110,10 @@ export const matchresult: nkruntime.RpcFunction = function (ctx, logger, nk, pay
 
     return JSON.stringify({ success: true, matchId });
   } catch (error: any) {
-    logger.error(`Error in matchresult: ${error?.Message || error}`);
+    logger.error(`Error in matchresult: ${error?.message || error}`);
 
     if (error && typeof error.code === 'number') throw error;
 
-    throw { message: error?.Message, code: 3 } as nkruntime.Error;
+    throw { message: error?.message || String(error), code: 3 } as nkruntime.Error;
   }
 };
