@@ -1,6 +1,6 @@
 import { handleError } from './utils.js';
 
-const LEADERBOARD_ID = 'weekly_coins_leaderboard';
+const LEADERBOARD_ID = 'leaderboard';
 
 export function initLeaderboard(
   ctx: nkruntime.Context,

@@ -52,23 +52,17 @@ export const matchresult: nkruntime.RpcFunction = function (ctx, logger, nk, pay
 
       const metadata = {
         matchId: matchId,
-        gameName: gameConfig.name,
+        gameName: gameConfig.gameName,
       };
 
       nk.walletUpdate(player.userId, changeset, metadata, true);
 
       if (player.result === 'win' && player.score > 0) {
-        nk.leaderboardRecordWrite(
-          'weekly_coins_leaderboard',
-          player.userId,
-          ctx.username,
-          player.score,
-        );
+        nk.leaderboardRecordWrite('leaderboard', player.userId, ctx.username, player.score);
       }
     }
 
-
-    const notifications: nkruntime.Notification[] = participants.map(player => {
+    const notifications: nkruntime.Notification[] = participants.map((player) => {
       let coinChangeSet = -gameConfig.entryFee;
       if (player.result === 'win') {
         coinChangeSet += gameConfig.winnerReward;
@@ -80,20 +74,19 @@ export const matchresult: nkruntime.RpcFunction = function (ctx, logger, nk, pay
         id: '',
         userId: player.userId,
         subject: `Game ${gameConfig.gameName} is over.`,
-        content: { 
-          matchId: matchId, 
-          result: player.result, 
-          coins: coinChangeSet 
+        content: {
+          matchId: matchId,
+          result: player.result,
+          coins: coinChangeSet,
         },
         code: 1,
         senderId: SYSTEM_USER_ID,
         persistent: true,
-        createTime: Math.floor(Date.now() / 1000)
+        createTime: Math.floor(Date.now() / 1000),
       };
     });
 
     nk.notificationsSend(notifications);
-
 
     nk.storageWrite([
       {

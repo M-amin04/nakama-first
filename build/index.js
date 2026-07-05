@@ -807,7 +807,7 @@ const getGameConfig = function (ctx, logger, nk, payload) {
   }
 };
 
-const LEADERBOARD_ID = 'weekly_coins_leaderboard';
+const LEADERBOARD_ID = 'leaderboard';
 function initLeaderboard(ctx, logger, nk) {
   try {
     const authoritative = true;
@@ -887,9 +887,10 @@ const matchresult = function (ctx, logger, nk, payload) {
       };
       nk.walletUpdate(player.userId, changeset, metadata, true);
       if (player.result === 'win' && player.score > 0) {
-        nk.leaderboardRecordWrite('weekly_coins_leaderboard', player.userId, ctx.username, player.score);
+        nk.leaderboardRecordWrite('leaderboard', player.userId, ctx.username, player.score);
       }
     }
+    ;
     const notifications = participants.map(player => {
       let coinChangeSet = -gameConfig.entryFee;
       if (player.result === 'win') {
