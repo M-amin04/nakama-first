@@ -19,7 +19,7 @@ import {
   getShopItemsRpc,
   setActiveItemRpc,
 } from './task.js';
-import { requestOtp, verifyOtp, loginWithPassword } from './auth.js';
+import { requestOtp, verifyOtp, upgradeGuestAccount, loginWithPassword } from './auth.js';
 import { setGameConfig, getGameConfig } from './games.js';
 import { initLeaderboard, onLeaderboardReset } from './leaderboard.js';
 import { matchresult } from './match_result.js';
@@ -47,6 +47,7 @@ function InitModule(
 
   initializer.registerRpc('request_otp', requestOtp);
   initializer.registerRpc('verify_otp', verifyOtp);
+  initializer.registerRpc('upgrade_guest_account', upgradeGuestAccount);
   initializer.registerRpc('loginWithPassword', loginWithPassword);
 
   initializer.registerRpc('setGameConfig', setGameConfig);

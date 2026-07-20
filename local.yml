@@ -4,8 +4,10 @@ logger:
   level: "DEBUG"
 runtime:
   js_entrypoint: "build/index.js"
+  env:
+    - "NODE_ENV=development"
 session:
-  token_expiry_sec: 7200 # 2 hours
+  token_expiry_sec: 7200 
 socket:
-  max_message_size_bytes: 4096 # reserved buffer
+  max_message_size_bytes: 4096 
   max_request_size_bytes: 131072

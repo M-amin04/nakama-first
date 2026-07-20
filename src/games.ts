@@ -1,21 +1,21 @@
 import * as v from 'valibot';
-
-const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
+import { NakamaErrorCode, ErrorMessage, handleError } from './utils/error.js';
+import { checkUser, checkPayload } from './utils/validator.js';
+import { SYSTEM_USER_ID, STORAGE_COLLECTIONS } from './utils/constants.js';
 
 export const setGameConfig: nkruntime.RpcFunction = function (ctx, logger, nk, payload) {
-  if (!ctx.userId) {
-    throw { message: 'Unauthorized', code: 16 } as nkruntime.Error;
-  }
-  if (!payload) {
-    throw { message: 'Payload is empty', code: 3 } as nkruntime.Error;
-  }
+  checkUser(ctx);
+  checkPayload(payload);
 
   try {
-    const account = nk.accountGetId(ctx.userId);
+    const account = nk.accountGetId(ctx.userId!);
     const metadata = account.user.metadata || {};
 
     if (metadata.role !== 'admin') {
-      throw { message: 'Only admin can manage games', code: 7 } as nkruntime.Error;
+      throw {
+        message: ErrorMessage.ADMIN_ONLY,
+        code: NakamaErrorCode.PERMISSION_DENIED,
+      };
     }
 
     const GameSchema = v.object({
@@ -32,7 +32,7 @@ export const setGameConfig: nkruntime.RpcFunction = function (ctx, logger, nk, p
 
     nk.storageWrite([
       {
-        collection: 'games',
+        collection: STORAGE_COLLECTIONS.GAMES,
         key: data.gameId,
         userId: SYSTEM_USER_ID,
         value: {
@@ -50,18 +50,12 @@ export const setGameConfig: nkruntime.RpcFunction = function (ctx, logger, nk, p
 
     return JSON.stringify({ success: true });
   } catch (error: any) {
-    logger.error(`Error in setGameConfig: ${error?.message || error}`);
-
-    if (error && typeof error.code === 'number') throw error;
-
-    throw { message: error?.message || String(error), code: 3 } as nkruntime.Error;
+    return handleError(ctx, logger, 'setGameConfig', error);
   }
 };
 
 export const getGameConfig: nkruntime.RpcFunction = function (ctx, logger, nk, payload) {
-  if (!payload) {
-    throw { message: 'Payload is empty', code: 3 } as nkruntime.Error;
-  }
+  checkPayload(payload);
 
   try {
     const GetGameSchema = v.object({
@@ -72,14 +66,17 @@ export const getGameConfig: nkruntime.RpcFunction = function (ctx, logger, nk, p
 
     const records = nk.storageRead([
       {
-        collection: 'games',
+        collection: STORAGE_COLLECTIONS.GAMES,
         key: data.gameId,
         userId: SYSTEM_USER_ID,
       },
     ]);
 
     if (records.length === 0) {
-      throw { message: 'Game not found', code: 5 } as nkruntime.Error;
+      throw {
+        message: ErrorMessage.GAME_NOT_FOUND,
+        code: NakamaErrorCode.NOT_FOUND,
+      };
     }
 
     return JSON.stringify({
@@ -87,10 +84,6 @@ export const getGameConfig: nkruntime.RpcFunction = function (ctx, logger, nk, p
       game: records[0].value,
     });
   } catch (error: any) {
-    logger.error(`Error in getGameConfig: ${error?.message || error}`);
-
-    if (error && typeof error.code === 'number') throw error;
-
-    throw { message: error?.message || String(error), code: 3 } as nkruntime.Error;
+    return handleError(ctx, logger, 'getGameConfig', error);
   }
 };

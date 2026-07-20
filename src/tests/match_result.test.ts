@@ -1,0 +1,162 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { matchresult } from '../match_result.js';
+import { ErrorMessage, NakamaErrorCode, MatchResultType } from '../utils/error.js';
+import { LEADERBOARD_CONFIG } from '../utils/constants.js';
+
+describe('Match Result RPC Tests', () => {
+  let mockCtx: nkruntime.Context;
+  let mockLogger: nkruntime.Logger;
+  let mockNk: nkruntime.Nakama;
+
+  beforeEach(() => {
+    mockCtx = {} as nkruntime.Context;
+    mockLogger = { error: vi.fn(), info: vi.fn() } as unknown as nkruntime.Logger;
+
+    mockNk = {
+      storageRead: vi.fn(),
+      storageWrite: vi.fn(),
+      uuidv4: vi.fn().mockReturnValue('mocked-uuid-1234'),
+      walletUpdate: vi.fn(),
+      leaderboardRecordWrite: vi.fn(),
+      notificationsSend: vi.fn(),
+    } as unknown as nkruntime.Nakama;
+  });
+
+  // --------------------------------------------------
+  // 1. Test already processed games
+  // --------------------------------------------------
+  it('should return alreadyProcessed=true if game was already processed', () => {
+    const payload = JSON.stringify({
+      gameId: 'game_001',
+      participants: [{ userId: 'user_1', result: MatchResultType.WIN, score: 100 }],
+    });
+
+    // Simulate game existing in PROCESSED_GAMES
+    vi.spyOn(mockNk, 'storageRead').mockReturnValueOnce([
+      {
+        key: 'game_001',
+        collection: 'processed_games',
+        userId: '',
+        version: '',
+        permissionRead: 0,
+        permissionWrite: 0,
+        createTime: 0,
+        updateTime: 0,
+        value: { matchId: 'existing-match-id' },
+      } as nkruntime.StorageObject,
+    ]);
+
+    const result = JSON.parse(matchresult(mockCtx, mockLogger, mockNk, payload) as string);
+
+    expect(result).toEqual({
+      success: true,
+      matchId: 'existing-match-id',
+      alreadyProcessed: true,
+    });
+    // Should not modify wallet or storage
+    expect(mockNk.walletUpdate).not.toHaveBeenCalled();
+    expect(mockNk.storageWrite).not.toHaveBeenCalled();
+  });
+
+  // --------------------------------------------------
+  // 2. Test game not found
+  // --------------------------------------------------
+  it('should throw GAME_NOT_FOUND error if game config is not found', () => {
+    const payload = JSON.stringify({
+      gameId: 'unknown_game',
+      participants: [{ userId: 'user_1', result: MatchResultType.WIN, score: 100 }],
+    });
+
+    // First call: PROCESSED_GAMES is empty, second call: GAMES is also empty
+    vi.spyOn(mockNk, 'storageRead')
+      .mockReturnValueOnce([]) // For PROCESSED_GAMES
+      .mockReturnValueOnce([]); // For GAMES
+
+    expect(() => matchresult(mockCtx, mockLogger, mockNk, payload)).toThrow(
+      expect.objectContaining({
+        message: ErrorMessage.GAME_NOT_FOUND,
+        code: NakamaErrorCode.NOT_FOUND,
+      }),
+    );
+  });
+
+  // --------------------------------------------------
+  // 3. Test complete and successful game processing
+  // --------------------------------------------------
+  it('should update wallet, record leaderboard, and send notifications', () => {
+    const payload = JSON.stringify({
+      gameId: 'game_001',
+      participants: [
+        { userId: 'player_win', result: MatchResultType.WIN, score: 250 },
+        { userId: 'player_lose', result: MatchResultType.LOSE, score: 50 },
+      ],
+    });
+
+    const mockGameConfig = {
+      gameName: 'Backgammon',
+      entryFee: 100,
+      winnerReward: 180,
+      loserReward: 10,
+      xp: 20,
+    };
+
+    // 1. PROCESSED_GAMES is empty
+    // 2. GAMES returns the config above
+    vi.spyOn(mockNk, 'storageRead')
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([
+        {
+          key: 'game_001',
+          collection: 'games',
+          userId: '',
+          version: '',
+          permissionRead: 0,
+          permissionWrite: 0,
+          createTime: 0,
+          updateTime: 0,
+          value: mockGameConfig,
+        } as nkruntime.StorageObject,
+      ]);
+
+    const result = JSON.parse(matchresult(mockCtx, mockLogger, mockNk, payload) as string);
+
+    // Verify function output
+    expect(result).toEqual({
+      success: true,
+      matchId: 'mocked-uuid-1234',
+    });
+
+    // Verify wallet update for winner (180 reward - 100 entry = 80 coins)
+    expect(mockNk.walletUpdate).toHaveBeenNthCalledWith(
+      1,
+      'player_win',
+      { coin: 80, xp: 20 },
+      { matchId: 'mocked-uuid-1234', gameName: 'Backgammon' },
+      true,
+    );
+
+    // Verify wallet update for loser (10 reward - 100 entry = -90 coins)
+    expect(mockNk.walletUpdate).toHaveBeenNthCalledWith(
+      2,
+      'player_lose',
+      { coin: -90, xp: 20 },
+      { matchId: 'mocked-uuid-1234', gameName: 'Backgammon' },
+      true,
+    );
+
+    // Verify leaderboard record only for winner
+    expect(mockNk.leaderboardRecordWrite).toHaveBeenCalledTimes(1);
+    expect(mockNk.leaderboardRecordWrite).toHaveBeenCalledWith(
+      LEADERBOARD_CONFIG.ID,
+      'player_win',
+      'player_win',
+      250,
+    );
+
+    // Verify notifications sent for both players
+    expect(mockNk.notificationsSend).toHaveBeenCalledTimes(1);
+
+    // Verify game recorded in history (MATCH_HISTORY) and PROCESSED_GAMES (2 storageWrite calls)
+    expect(mockNk.storageWrite).toHaveBeenCalledTimes(2);
+  });
+});
