@@ -31,7 +31,6 @@ describe('Match Result RPC Tests', () => {
       participants: [{ userId: 'user_1', result: MatchResultType.WIN, score: 100 }],
     });
 
-    // Simulate game existing in PROCESSED_GAMES
     vi.spyOn(mockNk, 'storageRead').mockReturnValueOnce([
       {
         key: 'game_001',
@@ -53,7 +52,6 @@ describe('Match Result RPC Tests', () => {
       matchId: 'existing-match-id',
       alreadyProcessed: true,
     });
-    // Should not modify wallet or storage
     expect(mockNk.walletUpdate).not.toHaveBeenCalled();
     expect(mockNk.storageWrite).not.toHaveBeenCalled();
   });
@@ -67,10 +65,9 @@ describe('Match Result RPC Tests', () => {
       participants: [{ userId: 'user_1', result: MatchResultType.WIN, score: 100 }],
     });
 
-    // First call: PROCESSED_GAMES is empty, second call: GAMES is also empty
     vi.spyOn(mockNk, 'storageRead')
-      .mockReturnValueOnce([]) // For PROCESSED_GAMES
-      .mockReturnValueOnce([]); // For GAMES
+      .mockReturnValueOnce([]) 
+      .mockReturnValueOnce([]); 
 
     expect(() => matchresult(mockCtx, mockLogger, mockNk, payload)).toThrow(
       expect.objectContaining({
@@ -100,8 +97,6 @@ describe('Match Result RPC Tests', () => {
       xp: 20,
     };
 
-    // 1. PROCESSED_GAMES is empty
-    // 2. GAMES returns the config above
     vi.spyOn(mockNk, 'storageRead')
       .mockReturnValueOnce([])
       .mockReturnValueOnce([
@@ -120,13 +115,11 @@ describe('Match Result RPC Tests', () => {
 
     const result = JSON.parse(matchresult(mockCtx, mockLogger, mockNk, payload) as string);
 
-    // Verify function output
     expect(result).toEqual({
       success: true,
       matchId: 'mocked-uuid-1234',
     });
 
-    // Verify wallet update for winner (180 reward - 100 entry = 80 coins)
     expect(mockNk.walletUpdate).toHaveBeenNthCalledWith(
       1,
       'player_win',
@@ -135,7 +128,6 @@ describe('Match Result RPC Tests', () => {
       true,
     );
 
-    // Verify wallet update for loser (10 reward - 100 entry = -90 coins)
     expect(mockNk.walletUpdate).toHaveBeenNthCalledWith(
       2,
       'player_lose',
@@ -144,7 +136,6 @@ describe('Match Result RPC Tests', () => {
       true,
     );
 
-    // Verify leaderboard record only for winner
     expect(mockNk.leaderboardRecordWrite).toHaveBeenCalledTimes(1);
     expect(mockNk.leaderboardRecordWrite).toHaveBeenCalledWith(
       LEADERBOARD_CONFIG.ID,
@@ -153,10 +144,8 @@ describe('Match Result RPC Tests', () => {
       250,
     );
 
-    // Verify notifications sent for both players
     expect(mockNk.notificationsSend).toHaveBeenCalledTimes(1);
 
-    // Verify game recorded in history (MATCH_HISTORY) and PROCESSED_GAMES (2 storageWrite calls)
     expect(mockNk.storageWrite).toHaveBeenCalledTimes(2);
   });
 });

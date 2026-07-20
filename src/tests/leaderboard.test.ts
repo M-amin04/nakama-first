@@ -11,7 +11,7 @@ describe('Leaderboard Module Tests', () => {
     mockCtx = {} as nkruntime.Context;
     mockLogger = { error: vi.fn(), info: vi.fn() } as unknown as nkruntime.Logger;
 
-    // Create the mock functions first
+
     const leaderboardCreateMock = vi.fn();
     const leaderboardRecordsListMock = vi.fn();
     const walletUpdateMock = vi.fn();
@@ -28,7 +28,6 @@ describe('Leaderboard Module Tests', () => {
   // --------------------------------------------------
   describe('initLeaderboard', () => {
     it('should create leaderboard with correct parameters', () => {
-      // Mock the nkruntime global objects that are used in initLeaderboard
       (global as any).nkruntime = {
         SortOrder: { DESCENDING: 1 },
         Operator: { SET: 0 },
@@ -36,20 +35,18 @@ describe('Leaderboard Module Tests', () => {
 
       initLeaderboard(mockCtx, mockLogger, mockNk);
 
-      // Check that leaderboardCreate was called once with the correct ID and reset schedule
       expect(mockNk.leaderboardCreate).toHaveBeenCalledTimes(1);
       expect(mockNk.leaderboardCreate).toHaveBeenCalledWith(
         LEADERBOARD_CONFIG.ID,
         true,
-        1, // SortOrder.DESCENDING
-        0, // Operator.SET
+        1, 
+        0, 
         LEADERBOARD_CONFIG.RESET_SCHEDULE,
         {},
       );
     });
 
     it('should log error and not crash if error occurs', () => {
-      // Simulate error during leaderboard creation
       vi.spyOn(mockNk, 'leaderboardCreate').mockImplementation(() => {
         throw new Error('Database Error');
       });
@@ -67,14 +64,12 @@ describe('Leaderboard Module Tests', () => {
     const expiryTime = 1700000000;
 
     it('should reward top 3 players in leaderboard', () => {
-      // Simulate top 3 player records
       vi.spyOn(mockNk, 'leaderboardRecordsList').mockReturnValue({
         records: [{ ownerId: 'user-1' }, { ownerId: 'user-2' }, { ownerId: 'user-3' }],
       } as nkruntime.LeaderboardRecordList);
 
       onLeaderboardReset(mockCtx, mockLogger, mockNk, mockLeaderboard, expiryTime);
 
-      // Verify leaderboard records list was called
       expect(mockNk.leaderboardRecordsList).toHaveBeenCalledWith(
         LEADERBOARD_CONFIG.ID,
         undefined,
@@ -83,10 +78,8 @@ describe('Leaderboard Module Tests', () => {
         expiryTime,
       );
 
-      // Verify walletUpdate was called 3 times for top 3 players
       expect(mockNk.walletUpdate).toHaveBeenCalledTimes(3);
 
-      // Verify first place reward (300 coins according to config)
       expect(mockNk.walletUpdate).toHaveBeenNthCalledWith(
         1,
         'user-1',

@@ -3,7 +3,6 @@ import { setGameConfig, getGameConfig } from '../games.js';
 import { ErrorMessage, NakamaErrorCode } from '../utils/error.js';
 
 describe('Game RPC Tests', () => {
-  // Create simplified mock Nakama inputs
   let mockCtx: nkruntime.Context;
   let mockLogger: nkruntime.Logger;
   let mockNk: nkruntime.Nakama;
@@ -12,7 +11,6 @@ describe('Game RPC Tests', () => {
     mockCtx = { userId: 'user-admin-123' } as nkruntime.Context;
     mockLogger = { error: vi.fn(), info: vi.fn() } as unknown as nkruntime.Logger;
 
-    // Mock only the methods used in the file
     mockNk = {
       accountGetId: vi.fn(),
       storageWrite: vi.fn(),
@@ -35,7 +33,6 @@ describe('Game RPC Tests', () => {
     });
 
     it('should save game config if user is admin', () => {
-      // 1. Initial condition: user has admin role
       vi.spyOn(mockNk, 'accountGetId').mockReturnValue({
         user: {
           userId: 'user-admin-123',
@@ -65,10 +62,8 @@ describe('Game RPC Tests', () => {
         disableTime: 0,
       } as nkruntime.Account);
 
-      // 2. Execute function
       const result = setGameConfig(mockCtx, mockLogger, mockNk, validPayload);
 
-      // 3. Verify result
       expect(JSON.parse(result as string)).toEqual({ success: true });
       expect(mockNk.storageWrite).toHaveBeenCalledTimes(1);
     });
@@ -104,7 +99,6 @@ describe('Game RPC Tests', () => {
         disableTime: 0,
       } as nkruntime.Account);
 
-      // 2 and 3. Execute function and expect error
       expect(() => setGameConfig(mockCtx, mockLogger, mockNk, validPayload)).toThrow(
         expect.objectContaining({
           message: ErrorMessage.ADMIN_ONLY,
@@ -123,7 +117,6 @@ describe('Game RPC Tests', () => {
     it('should return game information if game exists', () => {
       const gameData = { gameName: 'Ludo', entryFee: 100 };
 
-      // Simulate finding game in storage
       vi.spyOn(mockNk, 'storageRead').mockReturnValue([
         {
           key: 'game_1',
@@ -145,7 +138,6 @@ describe('Game RPC Tests', () => {
     });
 
     it('should throw NOT_FOUND error if game is not found', () => {
-      // Simulate empty storage
       vi.spyOn(mockNk, 'storageRead').mockReturnValue([]);
 
       expect(() => getGameConfig(mockCtx, mockLogger, mockNk, payload)).toThrow(
