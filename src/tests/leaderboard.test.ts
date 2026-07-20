@@ -3,24 +3,19 @@ import { initLeaderboard, onLeaderboardReset } from '../leaderboard.js';
 import { LEADERBOARD_CONFIG } from '../utils/constants.js';
 
 describe('Leaderboard Module Tests', () => {
-  let mockCtx: nkruntime.Context;
-  let mockLogger: nkruntime.Logger;
-  let mockNk: nkruntime.Nakama;
+  let mockCtx: any;
+  let mockLogger: any;
+  let mockNk: any;
 
   beforeEach(() => {
-    mockCtx = {} as nkruntime.Context;
-    mockLogger = { error: vi.fn(), info: vi.fn() } as unknown as nkruntime.Logger;
-
-
-    const leaderboardCreateMock = vi.fn();
-    const leaderboardRecordsListMock = vi.fn();
-    const walletUpdateMock = vi.fn();
+    mockCtx = {};
+    mockLogger = { error: vi.fn(), info: vi.fn() };
 
     mockNk = {
-      leaderboardCreate: leaderboardCreateMock,
-      leaderboardRecordsList: leaderboardRecordsListMock,
-      walletUpdate: walletUpdateMock,
-    } as unknown as nkruntime.Nakama;
+      leaderboardCreate: vi.fn(),
+      leaderboardRecordsList: vi.fn(),
+      walletUpdate: vi.fn(),
+    };
   });
 
   // --------------------------------------------------
@@ -65,8 +60,12 @@ describe('Leaderboard Module Tests', () => {
 
     it('should reward top 3 players in leaderboard', () => {
       vi.spyOn(mockNk, 'leaderboardRecordsList').mockReturnValue({
-        records: [{ ownerId: 'user-1' }, { ownerId: 'user-2' }, { ownerId: 'user-3' }],
-      } as nkruntime.LeaderboardRecordList);
+        records: [
+          { ownerId: 'user-1' },
+          { ownerId: 'user-2' },
+          { ownerId: 'user-3' }
+        ]
+      });
 
       onLeaderboardReset(mockCtx, mockLogger, mockNk, mockLeaderboard, expiryTime);
 

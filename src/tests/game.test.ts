@@ -3,19 +3,19 @@ import { setGameConfig, getGameConfig } from '../games.js';
 import { ErrorMessage, NakamaErrorCode } from '../utils/error.js';
 
 describe('Game RPC Tests', () => {
-  let mockCtx: nkruntime.Context;
-  let mockLogger: nkruntime.Logger;
-  let mockNk: nkruntime.Nakama;
+  let mockCtx: any;
+  let mockLogger: any;
+  let mockNk: any;
 
   beforeEach(() => {
-    mockCtx = { userId: 'user-admin-123' } as nkruntime.Context;
-    mockLogger = { error: vi.fn(), info: vi.fn() } as unknown as nkruntime.Logger;
+    mockCtx = { userId: 'user-admin-123' };
+    mockLogger = { error: vi.fn(), info: vi.fn() };
 
     mockNk = {
       accountGetId: vi.fn(),
       storageWrite: vi.fn(),
       storageRead: vi.fn(),
-    } as unknown as nkruntime.Nakama;
+    };
   });
 
   // --------------------------------------------------
@@ -33,34 +33,9 @@ describe('Game RPC Tests', () => {
     });
 
     it('should save game config if user is admin', () => {
-      vi.spyOn(mockNk, 'accountGetId').mockReturnValue({
-        user: {
-          userId: 'user-admin-123',
-          username: 'admin',
-          displayName: 'Admin User',
-          avatarUrl: '',
-          langTag: 'en',
-          location: '',
-          timezone: '',
-          metadata: { role: 'admin' },
-          edgeCount: 0,
-          createTime: 0,
-          updateTime: 0,
-          online: false,
-          appleId: '',
-          facebookId: '',
-          facebookInstantGameId: '',
-          googleId: '',
-          gamecenterId: '',
-          steamId: '',
-        },
-        wallet: {},
-        email: '',
-        devices: [],
-        customId: '',
-        verifyTime: 0,
-        disableTime: 0,
-      } as nkruntime.Account);
+      mockNk.accountGetId.mockReturnValue({
+        user: { metadata: { role: 'admin' } },
+      });
 
       const result = setGameConfig(mockCtx, mockLogger, mockNk, validPayload);
 
@@ -69,35 +44,9 @@ describe('Game RPC Tests', () => {
     });
 
     it('should throw error if user is not admin', () => {
-      // 1. Initial condition: user is not admin
-      vi.spyOn(mockNk, 'accountGetId').mockReturnValue({
-        user: {
-          userId: 'user-player-456',
-          username: 'player',
-          displayName: 'Player User',
-          avatarUrl: '',
-          langTag: 'en',
-          location: '',
-          timezone: '',
-          metadata: { role: 'player' },
-          edgeCount: 0,
-          createTime: 0,
-          updateTime: 0,
-          online: false,
-          appleId: '',
-          facebookId: '',
-          facebookInstantGameId: '',
-          googleId: '',
-          gamecenterId: '',
-          steamId: '',
-        },
-        wallet: {},
-        email: '',
-        devices: [],
-        customId: '',
-        verifyTime: 0,
-        disableTime: 0,
-      } as nkruntime.Account);
+      mockNk.accountGetId.mockReturnValue({
+        user: { metadata: { role: 'player' } },
+      });
 
       expect(() => setGameConfig(mockCtx, mockLogger, mockNk, validPayload)).toThrow(
         expect.objectContaining({
@@ -117,18 +66,8 @@ describe('Game RPC Tests', () => {
     it('should return game information if game exists', () => {
       const gameData = { gameName: 'Ludo', entryFee: 100 };
 
-      vi.spyOn(mockNk, 'storageRead').mockReturnValue([
-        {
-          key: 'game_1',
-          collection: 'games',
-          userId: '',
-          version: '',
-          permissionRead: 0,
-          permissionWrite: 0,
-          createTime: 0,
-          updateTime: 0,
-          value: gameData,
-        } as nkruntime.StorageObject,
+      mockNk.storageRead.mockReturnValue([
+        { value: gameData },
       ]);
 
       const result = JSON.parse(getGameConfig(mockCtx, mockLogger, mockNk, payload) as string);

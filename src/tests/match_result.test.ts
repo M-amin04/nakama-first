@@ -4,13 +4,13 @@ import { ErrorMessage, NakamaErrorCode, MatchResultType } from '../utils/error.j
 import { LEADERBOARD_CONFIG } from '../utils/constants.js';
 
 describe('Match Result RPC Tests', () => {
-  let mockCtx: nkruntime.Context;
-  let mockLogger: nkruntime.Logger;
-  let mockNk: nkruntime.Nakama;
+  let mockCtx: any;
+  let mockLogger: any;
+  let mockNk: any;
 
   beforeEach(() => {
-    mockCtx = {} as nkruntime.Context;
-    mockLogger = { error: vi.fn(), info: vi.fn() } as unknown as nkruntime.Logger;
+    mockCtx = {};
+    mockLogger = { error: vi.fn(), info: vi.fn() };
 
     mockNk = {
       storageRead: vi.fn(),
@@ -19,7 +19,7 @@ describe('Match Result RPC Tests', () => {
       walletUpdate: vi.fn(),
       leaderboardRecordWrite: vi.fn(),
       notificationsSend: vi.fn(),
-    } as unknown as nkruntime.Nakama;
+    };
   });
 
   // --------------------------------------------------
@@ -32,17 +32,7 @@ describe('Match Result RPC Tests', () => {
     });
 
     vi.spyOn(mockNk, 'storageRead').mockReturnValueOnce([
-      {
-        key: 'game_001',
-        collection: 'processed_games',
-        userId: '',
-        version: '',
-        permissionRead: 0,
-        permissionWrite: 0,
-        createTime: 0,
-        updateTime: 0,
-        value: { matchId: 'existing-match-id' },
-      } as nkruntime.StorageObject,
+      { value: { matchId: 'existing-match-id' } },
     ]);
 
     const result = JSON.parse(matchresult(mockCtx, mockLogger, mockNk, payload) as string);
@@ -99,19 +89,7 @@ describe('Match Result RPC Tests', () => {
 
     vi.spyOn(mockNk, 'storageRead')
       .mockReturnValueOnce([])
-      .mockReturnValueOnce([
-        {
-          key: 'game_001',
-          collection: 'games',
-          userId: '',
-          version: '',
-          permissionRead: 0,
-          permissionWrite: 0,
-          createTime: 0,
-          updateTime: 0,
-          value: mockGameConfig,
-        } as nkruntime.StorageObject,
-      ]);
+      .mockReturnValueOnce([{ value: mockGameConfig }]);
 
     const result = JSON.parse(matchresult(mockCtx, mockLogger, mockNk, payload) as string);
 
