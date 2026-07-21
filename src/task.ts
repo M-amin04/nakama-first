@@ -48,8 +48,8 @@ export const afterAuthenticateDevice: nkruntime.AfterHookFunction<
   const randomNumricDisplayname = 'Guest_' + randomNumericUsername;
 
   const initialWallet = {
-    coins: 1000,
-    gems: 50,
+    coin: 1000,
+    xp: 0,
   };
 
   try {

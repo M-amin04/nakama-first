@@ -29,8 +29,8 @@ const afterAuthenticateDevice = function (ctx, logger, nk, data, request) {
   const randomNumericUsername = Math.floor(10000000000 + Math.random() * 90000000000).toString();
   const randomNumricDisplayname = 'Guest_' + randomNumericUsername;
   const initialWallet = {
-    coins: 1000,
-    gems: 50
+    coin: 1000,
+    xp: 0
   };
   try {
     nk.accountUpdateId(userId, randomNumericUsername, randomNumricDisplayname, null, null, null, null);
@@ -357,6 +357,25 @@ function _getStandardProps(context) {
 }
 
 //#endregion
+//#region src/utils/_joinExpects/_joinExpects.ts
+/**
+* Joins multiple `expects` values with the given separator.
+*
+* @param values The `expects` values.
+* @param separator The separator.
+*
+* @returns The joined `expects` property.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _joinExpects(values$1, separator) {
+  const list = [...new Set(values$1)];
+  if (list.length > 1) return `(${list.join(` ${separator} `)})`;
+  return list[0] ?? "never";
+}
+
+//#endregion
 //#region src/utils/ValiError/ValiError.ts
 /**
 * A Valibot error with useful information.
@@ -453,6 +472,31 @@ function array(item, message$1) {
           dataset.value.push(itemDataset.value);
         }
       } else _addIssue(this, "type", dataset, config$1);
+      return dataset;
+    }
+  };
+}
+
+//#endregion
+//#region src/schemas/enum/enum.ts
+/* @__NO_SIDE_EFFECTS__ */
+function enum_(enum__, message$1) {
+  const options = [];
+  for (const key in enum__) if (`${+key}` !== key || typeof enum__[key] !== "string" || !Object.is(enum__[enum__[key]], +key)) options.push(enum__[key]);
+  return {
+    kind: "schema",
+    type: "enum",
+    reference: enum_,
+    expects: /* @__PURE__ */_joinExpects(options.map(_stringify), "|"),
+    async: false,
+    enum: enum__,
+    options,
+    message: message$1,
+    get "~standard"() {
+      return /* @__PURE__ */_getStandardProps(this);
+    },
+    "~run"(dataset, config$1) {
+      if (this.options.includes(dataset.value)) dataset.typed = true;else _addIssue(this, "type", dataset, config$1);
       return dataset;
     }
   };
@@ -611,14 +655,107 @@ function safeParse(schema, input, config$1) {
   };
 }
 
-const SYSTEM_USER_ID$2 = '00000000-0000-0000-0000-000000000000';
-const requestOtp = function (ctx, logger, nk, payload) {
-  if (!payload) {
+var NakamaErrorCode;
+(function (NakamaErrorCode) {
+  NakamaErrorCode[NakamaErrorCode["OK"] = 0] = "OK";
+  NakamaErrorCode[NakamaErrorCode["CANCELLED"] = 1] = "CANCELLED";
+  NakamaErrorCode[NakamaErrorCode["UNKNOWN"] = 2] = "UNKNOWN";
+  NakamaErrorCode[NakamaErrorCode["INVALID_ARGUMENT"] = 3] = "INVALID_ARGUMENT";
+  NakamaErrorCode[NakamaErrorCode["DEADLINE_EXCEEDED"] = 4] = "DEADLINE_EXCEEDED";
+  NakamaErrorCode[NakamaErrorCode["NOT_FOUND"] = 5] = "NOT_FOUND";
+  NakamaErrorCode[NakamaErrorCode["ALREADY_EXISTS"] = 6] = "ALREADY_EXISTS";
+  NakamaErrorCode[NakamaErrorCode["PERMISSION_DENIED"] = 7] = "PERMISSION_DENIED";
+  NakamaErrorCode[NakamaErrorCode["RESOURCE_EXHAUSTED"] = 8] = "RESOURCE_EXHAUSTED";
+  NakamaErrorCode[NakamaErrorCode["FAILED_PRECONDITION"] = 9] = "FAILED_PRECONDITION";
+  NakamaErrorCode[NakamaErrorCode["ABORTED"] = 10] = "ABORTED";
+  NakamaErrorCode[NakamaErrorCode["OUT_OF_RANGE"] = 11] = "OUT_OF_RANGE";
+  NakamaErrorCode[NakamaErrorCode["UNIMPLEMENTED"] = 12] = "UNIMPLEMENTED";
+  NakamaErrorCode[NakamaErrorCode["INTERNAL"] = 13] = "INTERNAL";
+  NakamaErrorCode[NakamaErrorCode["UNAVAILABLE"] = 14] = "UNAVAILABLE";
+  NakamaErrorCode[NakamaErrorCode["DATA_LOSS"] = 15] = "DATA_LOSS";
+  NakamaErrorCode[NakamaErrorCode["UNAUTHENTICATED"] = 16] = "UNAUTHENTICATED";
+})(NakamaErrorCode || (NakamaErrorCode = {}));
+var ErrorMessage;
+(function (ErrorMessage) {
+  ErrorMessage["PAYLOAD_EMPTY"] = "Payload is empty.";
+  ErrorMessage["UNAUTHORIZED"] = "Unauthorized.";
+  ErrorMessage["ADMIN_ONLY"] = "Only admin can manage games.";
+  ErrorMessage["INVALID_ARGUMENT"] = "Invalid argument.";
+  ErrorMessage["USER_NOT_FOUND"] = "User does not exist or incorrect credentials.";
+  ErrorMessage["INCORRECT_PASSWORD"] = "Incorrect password.";
+  ErrorMessage["GAME_NOT_FOUND"] = "Game is not found.";
+  ErrorMessage["OTP_NOT_FOUND"] = "OTP not found.";
+  ErrorMessage["OTP_EXPIRED"] = "OTP has expired.";
+  ErrorMessage["INVALID_OTP"] = "Invalid OTP.";
+  ErrorMessage["INTERNAL_SERVER_ERROR"] = "Internal server error.";
+  ErrorMessage["PHONE_ALREADY_REGISTERED"] = "This phone number is already registered to another account.";
+})(ErrorMessage || (ErrorMessage = {}));
+var MatchResultType;
+(function (MatchResultType) {
+  MatchResultType["WIN"] = "win";
+  MatchResultType["LOSE"] = "lose";
+})(MatchResultType || (MatchResultType = {}));
+function handleError(ctx, logger, functionName, error) {
+  logger.error(`Error in ${functionName}: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
+  if (error && typeof error.code === 'number') {
+    throw error;
+  }
+  const isProduction = ctx.env.NODE_ENV === 'production';
+  if (isProduction) {
     throw {
-      message: 'Payload is empty.',
-      code: 3
+      message: ErrorMessage.INTERNAL_SERVER_ERROR,
+      code: NakamaErrorCode.INTERNAL
+    };
+  } else {
+    throw {
+      message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
+      code: NakamaErrorCode.INTERNAL
     };
   }
+}
+
+function checkUser(ctx) {
+  if (!ctx.userId) {
+    throw {
+      message: ErrorMessage.UNAUTHORIZED,
+      code: NakamaErrorCode.UNAUTHENTICATED
+    };
+  }
+}
+function checkPayload(payload) {
+  if (!payload || payload.trim() === '' || payload === '{}') {
+    throw {
+      message: ErrorMessage.PAYLOAD_EMPTY,
+      code: NakamaErrorCode.INVALID_ARGUMENT
+    };
+  }
+}
+
+const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
+const AUTH_CONFIG = {
+  TOKEN_EXPIRY_SECONDS: 3600,
+  OTP_EXPIRY_MS: 120000,
+  INITIAL_COIN: 1000,
+  INITIAL_XP: 50
+};
+const STORAGE_COLLECTIONS = {
+  USER_CREDENTIALS: 'user_credentials',
+  PHONE_VERIFICATION: 'phone_verification',
+  GAMES: 'games',
+  PROCESSED_GAMES: 'processed_games',
+  MATCH_HISTORY: 'match_history'
+};
+const LEADERBOARD_CONFIG = {
+  ID: 'leaderboard',
+  RESET_SCHEDULE: '0 0 * * 0',
+  TOP_REWARDS: [300, 300, 300]
+};
+
+function generateUserToken(nk, userId, username) {
+  return nk.authenticateTokenGenerate(userId, username, Math.floor(Date.now() / 1000) + AUTH_CONFIG.TOKEN_EXPIRY_SECONDS);
+}
+const requestOtp = function (ctx, logger, nk, payload) {
+  checkPayload(payload);
   try {
     const RequestOtpSchema = object({
       phone: string(),
@@ -626,14 +763,14 @@ const requestOtp = function (ctx, logger, nk, payload) {
     });
     const data = parse(RequestOtpSchema, JSON.parse(payload));
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    const hashedPassword = nk.bcryptHash(data.password);
     nk.storageWrite([{
-      collection: 'phone_verification',
+      collection: STORAGE_COLLECTIONS.PHONE_VERIFICATION,
       key: data.phone,
-      userId: SYSTEM_USER_ID$2,
+      userId: SYSTEM_USER_ID,
       value: {
         otp: otp,
-        password: data.password,
-        createdAt: Date.now()
+        password: hashedPassword
       },
       permissionRead: 0,
       permissionWrite: 0
@@ -642,21 +779,11 @@ const requestOtp = function (ctx, logger, nk, payload) {
       success: true
     });
   } catch (error) {
-    logger.error(`Error in requestOtp: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
-    if (error && typeof error.code === 'number') throw error;
-    throw {
-      message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
-      code: 3
-    };
+    return handleError(ctx, logger, 'requestOtp', error);
   }
 };
 const verifyOtp = function (ctx, logger, nk, payload) {
-  if (!payload) {
-    throw {
-      message: 'Payload is empty.',
-      code: 3
-    };
-  }
+  checkPayload(payload);
   try {
     const VerifyOtpSchema = object({
       phone: string(),
@@ -664,79 +791,109 @@ const verifyOtp = function (ctx, logger, nk, payload) {
     });
     const data = parse(VerifyOtpSchema, JSON.parse(payload));
     const records = nk.storageRead([{
-      collection: 'phone_verification',
+      collection: STORAGE_COLLECTIONS.PHONE_VERIFICATION,
       key: data.phone,
-      userId: SYSTEM_USER_ID$2
+      userId: SYSTEM_USER_ID
     }]);
     if (records.length === 0) {
       throw {
-        message: 'OTP not found.',
-        code: 5
+        message: ErrorMessage.OTP_NOT_FOUND,
+        code: NakamaErrorCode.NOT_FOUND
       };
     }
     const storedData = records[0].value;
     if (Date.now() - storedData.createdAt > 120000) {
       throw {
-        message: 'OTP has expired',
-        code: 3
+        message: ErrorMessage.OTP_EXPIRED,
+        code: NakamaErrorCode.INVALID_ARGUMENT
       };
     }
     if (storedData.otp !== data.otp) {
       throw {
-        message: 'Invalid OTP',
-        code: 3
+        message: ErrorMessage.INVALID_OTP,
+        code: NakamaErrorCode.INVALID_ARGUMENT
       };
     }
     nk.storageDelete([{
       collection: 'phone_verification',
       key: data.phone,
-      userId: SYSTEM_USER_ID$2
+      userId: SYSTEM_USER_ID
     }]);
     const authResult = nk.authenticateCustom(data.phone, data.phone, true);
     if (authResult.created) {
-      const initialCoins = 1000;
-      const initialXp = 50;
-      const changeset = {
-        coin: initialCoins,
-        xp: initialXp
-      };
-      const metadata = {
+      nk.walletUpdate(authResult.userId, {
+        coin: AUTH_CONFIG.INITIAL_COIN,
+        xp: AUTH_CONFIG.INITIAL_COIN
+      }, {
         reason: 'Initial registration bonus.'
-      };
-      nk.walletUpdate(authResult.userId, changeset, metadata, true);
+      }, true);
     }
     nk.storageWrite([{
-      collection: 'user_credentials',
+      collection: STORAGE_COLLECTIONS.USER_CREDENTIALS,
       key: authResult.userId,
-      userId: SYSTEM_USER_ID$2,
+      userId: SYSTEM_USER_ID,
       value: {
+        phone: data.phone,
         password: storedData.password
       },
       permissionRead: 0,
       permissionWrite: 0
     }]);
-    const token = nk.authenticateTokenGenerate(authResult.userId, authResult.username, Math.floor(Date.now() / 1000) + 3600);
     return JSON.stringify({
       success: true,
       userId: authResult.userId,
-      token: token
+      token: generateUserToken(nk, authResult.userId, authResult.username)
     });
   } catch (error) {
-    logger.error(`Error in verifyOtp: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
-    if (error && typeof error.code === 'number') throw error;
-    throw {
-      message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
-      code: 3
-    };
+    return handleError(ctx, logger, 'verifyOtp', error);
+  }
+};
+const upgradeGuestAccount = function (ctx, logger, nk, payload) {
+  checkUser(ctx);
+  checkPayload(payload);
+  try {
+    const upgradeSchema = object({
+      phone: string(),
+      password: string()
+    });
+    const data = parse(upgradeSchema, JSON.parse(payload));
+    let phoneExist = false;
+    try {
+      const testAuth = nk.authenticateCustom(data.phone, data.phone, false);
+      if (testAuth.userId !== ctx.userId) phoneExist = true;
+    } catch (e) {
+      phoneExist = false;
+    }
+    if (phoneExist) {
+      throw {
+        message: ErrorMessage.PHONE_ALREADY_REGISTERED,
+        code: NakamaErrorCode.ALREADY_EXISTS
+      };
+    }
+    nk.accountUpdateId(ctx.userId, data.phone, ' ', null, null, null, null);
+    const hashedPassword = nk.bcryptHash(data.password);
+    nk.storageWrite([{
+      collection: STORAGE_COLLECTIONS.USER_CREDENTIALS,
+      key: ctx.userId,
+      userId: SYSTEM_USER_ID,
+      value: {
+        phone: data.phone,
+        password: hashedPassword
+      },
+      permissionRead: 0,
+      permissionWrite: 0
+    }]);
+    return JSON.stringify({
+      success: true,
+      message: 'Account upgraded.',
+      token: generateUserToken(nk, ctx.userId, data.phone)
+    });
+  } catch (error) {
+    return handleError(ctx, logger, 'upgradeGuestAccount', error);
   }
 };
 const loginWithPassword = function (ctx, logger, nk, payload) {
-  if (!payload) {
-    throw {
-      message: 'Payload is empty',
-      code: 3
-    };
-  }
+  checkPayload(payload);
   try {
     const LoginSchema = object({
       phone: string(),
@@ -748,65 +905,49 @@ const loginWithPassword = function (ctx, logger, nk, payload) {
       authResult = nk.authenticateCustom(data.phone, data.phone, false);
     } catch (error) {
       throw {
-        message: 'User does not exist or incorrect credentials',
-        code: 16
+        message: ErrorMessage.USER_NOT_FOUND,
+        code: NakamaErrorCode.UNAUTHENTICATED
       };
     }
     const credentials = nk.storageRead([{
-      collection: 'user_credentials',
+      collection: STORAGE_COLLECTIONS.USER_CREDENTIALS,
       key: authResult.userId,
-      userId: SYSTEM_USER_ID$2
+      userId: SYSTEM_USER_ID
     }]);
     if (credentials.length === 0) {
       throw {
-        message: 'Incorrect credentials',
-        code: 16
+        message: ErrorMessage.USER_NOT_FOUND,
+        code: NakamaErrorCode.UNAUTHENTICATED
       };
     }
     const storedPassword = credentials[0].value.password;
-    if (storedPassword !== data.password) {
+    const isPasswordValid = nk.bcryptCompare(storedPassword, data.password);
+    if (!isPasswordValid) {
       throw {
-        message: 'Incorrect password',
-        code: 16
+        message: ErrorMessage.INCORRECT_PASSWORD,
+        code: NakamaErrorCode.UNAUTHENTICATED
       };
     }
-    const token = nk.authenticateTokenGenerate(authResult.userId, authResult.username, Math.floor(Date.now() / 1000) + 3600);
     return JSON.stringify({
       success: true,
       userId: authResult.userId,
-      token: token
+      token: generateUserToken(nk, authResult.userId, authResult.username)
     });
   } catch (error) {
-    logger.error(`Error in loginWithPassword: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
-    if (error && typeof error.code === 'number') throw error;
-    throw {
-      message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
-      code: 3
-    };
+    return handleError(ctx, logger, 'loginWithPassword', error);
   }
 };
 
-const SYSTEM_USER_ID$1 = '00000000-0000-0000-0000-000000000000';
 const setGameConfig = function (ctx, logger, nk, payload) {
-  if (!ctx.userId) {
-    throw {
-      message: 'Unauthorized',
-      code: 16
-    };
-  }
-  if (!payload) {
-    throw {
-      message: 'Payload is empty',
-      code: 3
-    };
-  }
+  checkUser(ctx);
+  checkPayload(payload);
   try {
     const account = nk.accountGetId(ctx.userId);
     const metadata = account.user.metadata || {};
     if (metadata.role !== 'admin') {
       throw {
-        message: 'Only admin can manage games',
-        code: 7
+        message: ErrorMessage.ADMIN_ONLY,
+        code: NakamaErrorCode.PERMISSION_DENIED
       };
     }
     const GameSchema = object({
@@ -820,9 +961,9 @@ const setGameConfig = function (ctx, logger, nk, payload) {
     });
     const data = parse(GameSchema, JSON.parse(payload));
     nk.storageWrite([{
-      collection: 'games',
+      collection: STORAGE_COLLECTIONS.GAMES,
       key: data.gameId,
-      userId: SYSTEM_USER_ID$1,
+      userId: SYSTEM_USER_ID,
       value: {
         gameName: data.gameName,
         entryFee: data.entryFee,
@@ -838,35 +979,25 @@ const setGameConfig = function (ctx, logger, nk, payload) {
       success: true
     });
   } catch (error) {
-    logger.error(`Error in setGameConfig: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
-    if (error && typeof error.code === 'number') throw error;
-    throw {
-      message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
-      code: 3
-    };
+    return handleError(ctx, logger, 'setGameConfig', error);
   }
 };
 const getGameConfig = function (ctx, logger, nk, payload) {
-  if (!payload) {
-    throw {
-      message: 'Payload is empty',
-      code: 3
-    };
-  }
+  checkPayload(payload);
   try {
     const GetGameSchema = object({
       gameId: string()
     });
     const data = parse(GetGameSchema, JSON.parse(payload));
     const records = nk.storageRead([{
-      collection: 'games',
+      collection: STORAGE_COLLECTIONS.GAMES,
       key: data.gameId,
-      userId: SYSTEM_USER_ID$1
+      userId: SYSTEM_USER_ID
     }]);
     if (records.length === 0) {
       throw {
-        message: 'Game not found',
-        code: 5
+        message: ErrorMessage.GAME_NOT_FOUND,
+        code: NakamaErrorCode.NOT_FOUND
       };
     }
     return JSON.stringify({
@@ -874,131 +1005,130 @@ const getGameConfig = function (ctx, logger, nk, payload) {
       game: records[0].value
     });
   } catch (error) {
-    logger.error(`Error in getGameConfig: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
-    if (error && typeof error.code === 'number') throw error;
-    throw {
-      message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
-      code: 3
-    };
+    return handleError(ctx, logger, 'getGameConfig', error);
   }
 };
 
-const LEADERBOARD_ID = 'leaderboard';
 function initLeaderboard(ctx, logger, nk) {
   try {
-    const authoritative = true;
-    const sortOrder = "descending";
-    const operator = "set";
-    const resetSchedule = '0 0 * * 0';
-    nk.leaderboardCreate(LEADERBOARD_ID, authoritative, sortOrder, operator, resetSchedule, {});
+    nk.leaderboardCreate(LEADERBOARD_CONFIG.ID, true, "descending", "set", LEADERBOARD_CONFIG.RESET_SCHEDULE, {});
   } catch (error) {
     logger.error(`Error in initLeaderboard: ${(error === null || error === void 0 ? void 0 : error.message) || String(error)}`);
   }
 }
 const onLeaderboardReset = function (ctx, logger, nk, leaderboard, expiryTime) {
   try {
-    if (leaderboard.id !== LEADERBOARD_ID) return;
-    logger.info(`Leaderboard ${leaderboard.id} has reset. Fetching top 3 players...`);
-    const result = nk.leaderboardRecordsList(LEADERBOARD_ID, undefined, 3, undefined, expiryTime);
+    if (leaderboard.id !== LEADERBOARD_CONFIG.ID) return;
+    const result = nk.leaderboardRecordsList(LEADERBOARD_CONFIG.ID, undefined, 3, undefined, expiryTime);
     const records = result.records || [];
     for (let i = 0; i < records.length; i++) {
       const record = records[i];
       const userId = record.ownerId;
-      const changeset = {
-        coin: 300
-      };
-      const metadata = {
-        reason: 'Weekly leaderboard top 3 reward'
-      };
-      nk.walletUpdate(userId, changeset, metadata, true);
+      const coinReward = LEADERBOARD_CONFIG.TOP_REWARDS[i] || 100;
+      nk.walletUpdate(userId, {
+        coin: coinReward
+      }, {
+        reason: `Weekly leaderboard rank ${i + 1} reward.`
+      }, true);
     }
   } catch (error) {
     logger.error(`Error in onLeaderboardReset: ${(error === null || error === void 0 ? void 0 : error.message) || String(error)}`);
   }
 };
 
-const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
 const MatchParticipantSchema = object({
   userId: string(),
-  result: string(),
+  result: enum_(MatchResultType),
   score: number()
 });
 const MatchPayloadSchema = object({
   gameId: string(),
   participants: array(MatchParticipantSchema)
 });
+const calculateReward = (result, config) => {
+  if (result === MatchResultType.WIN) return config.winnerReward || 0;
+  if (result === MatchResultType.LOSE) return config.loserReward || 0;
+  return 0;
+};
 const matchresult = function (ctx, logger, nk, payload) {
   try {
     const input = JSON.parse(payload || '{}');
     const parsed = safeParse(MatchPayloadSchema, input);
     if (!parsed.success) {
       throw {
-        message: 'Invalid argument',
-        code: 3
+        message: ErrorMessage.INVALID_ARGUMENT,
+        code: NakamaErrorCode.INVALID_ARGUMENT
       };
     }
     const {
       gameId,
       participants
     } = parsed.output;
+    const checkStored = nk.storageRead([{
+      collection: STORAGE_COLLECTIONS.PROCESSED_GAMES,
+      key: gameId,
+      userId: SYSTEM_USER_ID
+    }]);
+    if (checkStored.length > 0) {
+      return JSON.stringify({
+        success: true,
+        matchId: checkStored[0].value.matchId,
+        alreadyProcessed: true
+      });
+    }
     const gameRecords = nk.storageRead([{
-      collection: 'games',
+      collection: STORAGE_COLLECTIONS.GAMES,
       key: gameId,
       userId: SYSTEM_USER_ID
     }]);
     if (gameRecords.length === 0) {
       throw {
-        message: 'Game is not found',
-        code: 5
+        message: ErrorMessage.GAME_NOT_FOUND,
+        code: NakamaErrorCode.NOT_FOUND
       };
     }
     const gameConfig = gameRecords[0].value;
     const matchId = nk.uuidv4();
+    nk.storageWrite([{
+      collection: STORAGE_COLLECTIONS.PROCESSED_GAMES,
+      key: gameId,
+      userId: SYSTEM_USER_ID,
+      value: {
+        matchId,
+        processedAt: Date.now()
+      },
+      permissionRead: 0,
+      permissionWrite: 0
+    }]);
     for (const player of participants) {
-      let coinChangeSet = -gameConfig.entryFee;
-      if (player.result === 'win') {
-        coinChangeSet += gameConfig.winnerReward;
-      } else if (player.result === 'lose') {
-        coinChangeSet += gameConfig.loserReward;
-      }
-      const changeset = {
+      const reward = calculateReward(player.result, gameConfig);
+      const coinChangeSet = reward - (gameConfig.entryFee || 0);
+      nk.walletUpdate(player.userId, {
         coin: Math.floor(coinChangeSet),
         xp: Math.floor(gameConfig.xp || 0)
-      };
-      const metadata = {
-        matchId: matchId,
+      }, {
+        matchId,
         gameName: gameConfig.gameName
-      };
-      nk.walletUpdate(player.userId, changeset, metadata, true);
-      if (player.result === 'win' && player.score > 0) {
-        nk.leaderboardRecordWrite('leaderboard', player.userId, ctx.username, player.score);
+      }, true);
+      if (player.result === MatchResultType.WIN && player.score > 0) {
+        nk.leaderboardRecordWrite(LEADERBOARD_CONFIG.ID, player.userId, player.userId, player.score);
       }
     }
-    const notifications = participants.map(player => {
-      let coinChangeSet = -gameConfig.entryFee;
-      if (player.result === 'win') {
-        coinChangeSet += gameConfig.winnerReward;
-      } else if (player.result === 'lose') {
-        coinChangeSet += gameConfig.loserReward;
-      }
-      return {
-        id: '',
-        userId: player.userId,
-        subject: `Game ${gameConfig.gameName} is over.`,
-        content: {
-          matchId: matchId,
-          result: player.result,
-          coins: coinChangeSet
-        },
-        code: 1,
-        senderId: SYSTEM_USER_ID,
-        persistent: true,
-        createTime: Math.floor(Date.now() / 1000)
-      };
-    });
+    const notifications = participants.map(player => ({
+      userId: player.userId,
+      subject: `Game ${gameConfig.gameName} is over.`,
+      content: {
+        matchId,
+        result: player.result,
+        coin: calculateReward(player.result, gameConfig)
+      },
+      code: 1,
+      senderId: SYSTEM_USER_ID,
+      persistent: true
+    }));
     nk.notificationsSend(notifications);
     nk.storageWrite([{
-      collection: 'match_history',
+      collection: STORAGE_COLLECTIONS.MATCH_HISTORY,
       key: matchId,
       userId: SYSTEM_USER_ID,
       value: {
@@ -1016,12 +1146,7 @@ const matchresult = function (ctx, logger, nk, payload) {
       matchId
     });
   } catch (error) {
-    logger.error(`Error in matchresult: ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
-    if (error && typeof error.code === 'number') throw error;
-    throw {
-      message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
-      code: 3
-    };
+    return handleError(ctx, logger, 'matchresult', error);
   }
 };
 
@@ -1033,6 +1158,7 @@ function InitModule(ctx, logger, nk, initializer) {
   initializer.registerLeaderboardReset(onLeaderboardReset);
   initializer.registerRpc('request_otp', requestOtp);
   initializer.registerRpc('verify_otp', verifyOtp);
+  initializer.registerRpc('upgrade_guest_account', upgradeGuestAccount);
   initializer.registerRpc('loginWithPassword', loginWithPassword);
   initializer.registerRpc('setGameConfig', setGameConfig);
   initializer.registerRpc('getGameConfig', getGameConfig);

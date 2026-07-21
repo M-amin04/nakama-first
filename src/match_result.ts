@@ -1,10 +1,10 @@
 import * as v from 'valibot';
-
-const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
+import { NakamaErrorCode, ErrorMessage, handleError, MatchResultType } from './utils/error.js';
+import { SYSTEM_USER_ID, STORAGE_COLLECTIONS, LEADERBOARD_CONFIG } from './utils/constants.js';
 
 const MatchParticipantSchema = v.object({
   userId: v.string(),
-  result: v.string(),
+  result: v.enum(MatchResultType),
   score: v.number(),
 });
 
@@ -13,87 +13,113 @@ const MatchPayloadSchema = v.object({
   participants: v.array(MatchParticipantSchema),
 });
 
+const calculateReward = (result: MatchResultType, config: any): number => {
+  if (result === MatchResultType.WIN) return config.winnerReward || 0;
+  if (result === MatchResultType.LOSE) return config.loserReward || 0;
+  return 0;
+};
+
 export const matchresult: nkruntime.RpcFunction = function (ctx, logger, nk, payload) {
   try {
     const input = JSON.parse(payload || '{}');
     const parsed = v.safeParse(MatchPayloadSchema, input);
 
     if (!parsed.success) {
-      throw { message: 'Invalid argument', code: 3 } as nkruntime.Error;
+      throw {
+        message: ErrorMessage.INVALID_ARGUMENT,
+        code: NakamaErrorCode.INVALID_ARGUMENT,
+      };
     }
 
     const { gameId, participants } = parsed.output;
 
+    const checkStored = nk.storageRead([
+      {
+        collection: STORAGE_COLLECTIONS.PROCESSED_GAMES,
+        key: gameId,
+        userId: SYSTEM_USER_ID,
+      },
+    ]);
+
+    if (checkStored.length > 0) {
+      return JSON.stringify({
+        success: true,
+        matchId: checkStored[0].value.matchId,
+        alreadyProcessed: true,
+      });
+    }
+
     const gameRecords = nk.storageRead([
       {
-        collection: 'games',
+        collection: STORAGE_COLLECTIONS.GAMES,
         key: gameId,
         userId: SYSTEM_USER_ID,
       },
     ]);
 
     if (gameRecords.length === 0) {
-      throw { message: 'Game is not found', code: 5 } as nkruntime.Error;
+      throw {
+        message: ErrorMessage.GAME_NOT_FOUND,
+        code: NakamaErrorCode.NOT_FOUND,
+      };
     }
 
     const gameConfig = gameRecords[0].value;
     const matchId = nk.uuidv4();
 
+    nk.storageWrite([
+      {
+        collection: STORAGE_COLLECTIONS.PROCESSED_GAMES,
+        key: gameId,
+        userId: SYSTEM_USER_ID,
+        value: { matchId, processedAt: Date.now() },
+        permissionRead: 0,
+        permissionWrite: 0,
+      },
+    ]);
+
     for (const player of participants) {
-      let coinChangeSet = -gameConfig.entryFee;
+      const reward = calculateReward(player.result, gameConfig);
+      const coinChangeSet = reward - (gameConfig.entryFee || 0);
 
-      if (player.result === 'win') {
-        coinChangeSet += gameConfig.winnerReward;
-      } else if (player.result === 'lose') {
-        coinChangeSet += gameConfig.loserReward;
-      }
+      nk.walletUpdate(
+        player.userId,
+        {
+          coin: Math.floor(coinChangeSet),
+          xp: Math.floor(gameConfig.xp || 0),
+        },
+        { matchId, gameName: gameConfig.gameName },
+        true,
+      );
 
-      const changeset = {
-        coin: Math.floor(coinChangeSet),
-        xp: Math.floor(gameConfig.xp || 0),
-      };
-
-      const metadata = {
-        matchId: matchId,
-        gameName: gameConfig.gameName,
-      };
-
-      nk.walletUpdate(player.userId, changeset, metadata, true);
-
-      if (player.result === 'win' && player.score > 0) {
-        nk.leaderboardRecordWrite('leaderboard', player.userId, ctx.username, player.score);
+      if (player.result === MatchResultType.WIN && player.score > 0) {
+        nk.leaderboardRecordWrite(
+          LEADERBOARD_CONFIG.ID,
+          player.userId,
+          player.userId,
+          player.score,
+        );
       }
     }
 
-    const notifications: nkruntime.Notification[] = participants.map((player) => {
-      let coinChangeSet = -gameConfig.entryFee;
-      if (player.result === 'win') {
-        coinChangeSet += gameConfig.winnerReward;
-      } else if (player.result === 'lose') {
-        coinChangeSet += gameConfig.loserReward;
-      }
-
-      return {
-        id: '',
-        userId: player.userId,
-        subject: `Game ${gameConfig.gameName} is over.`,
-        content: {
-          matchId: matchId,
-          result: player.result,
-          coins: coinChangeSet,
-        },
-        code: 1,
-        senderId: SYSTEM_USER_ID,
-        persistent: true,
-        createTime: Math.floor(Date.now() / 1000),
-      };
-    });
+    const notifications: nkruntime.NotificationRequest[] = participants.map((player) => ({
+      userId: player.userId,
+      subject: `Game ${gameConfig.gameName} is over.`,
+      content: {
+        matchId,
+        result: player.result,
+        coin: calculateReward(player.result, gameConfig),
+      },
+      code: 1,
+      senderId: SYSTEM_USER_ID,
+      persistent: true,
+    }));
 
     nk.notificationsSend(notifications);
 
     nk.storageWrite([
       {
-        collection: 'match_history',
+        collection: STORAGE_COLLECTIONS.MATCH_HISTORY,
         key: matchId,
         userId: SYSTEM_USER_ID,
         value: {
@@ -110,10 +136,6 @@ export const matchresult: nkruntime.RpcFunction = function (ctx, logger, nk, pay
 
     return JSON.stringify({ success: true, matchId });
   } catch (error: any) {
-    logger.error(`Error in matchresult: ${error?.message || error}`);
-
-    if (error && typeof error.code === 'number') throw error;
-
-    throw { message: error?.message || String(error), code: 3 } as nkruntime.Error;
+    return handleError(ctx, logger, 'matchresult', error);
   }
 };
